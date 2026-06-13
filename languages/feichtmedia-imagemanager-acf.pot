@@ -1,0 +1,219 @@
+# Copyright (C) 2026 FeichtMedia
+# This file is distributed under the same license as the FeichtMedia ImageManager ACF plugin.
+# FeichtMedia <info@feicht-media.de>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FeichtMedia ImageManager ACF 1.0.0\n"
+"Report-Msgid-Bugs-To: https://www.feicht-media.de/\n"
+"POT-Creation-Date: 2026-06-12T00:00:00+00:00\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+"X-Generator: FeichtMedia\n"
+"X-Domain: feichtmedia-imagemanager-acf\n"
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+#: feichtmedia-imagemanager-acf.php
+msgid "FeichtMedia ImageManager"
+msgstr ""
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "API Connection"
+msgstr ""
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "API Key"
+msgstr ""
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "Project ID"
+msgstr ""
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "CDN Domain"
+msgstr ""
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "Read-only API key for the ImageManager API (Bearer token)."
+msgstr ""
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "Your ImageManager usergroup / project ID (e.g. wordpress)."
+msgstr ""
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "CDN domain without protocol (e.g. cdn.example.com). The protocol will be stripped automatically."
+msgstr ""
+
+#. translators: %s: URL to the settings page
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "FeichtMedia ImageManager: Please complete the plugin settings under <a href=\"%s\">Settings &#8594; FeichtMedia ImageManager</a>."
+msgstr ""
+
+#: includes/class-settings.php
+msgid "ACF Field"
+msgstr ""
+
+#: includes/class-settings.php
+msgid "Metadata Cache"
+msgstr ""
+
+#: includes/class-settings.php
+msgid "Enable metadata cache"
+msgstr ""
+
+#: includes/class-settings.php
+msgid "Caches ImageManager API metadata responses in WordPress transients. Applies only to ACF field value reads (e.g. get_field(), GraphQL) — the image browser in the editor is not affected. Disable for debugging or when image metadata changes frequently."
+msgstr ""
+
+#: includes/class-settings.php
+msgid "Cache TTL"
+msgstr ""
+
+#: includes/class-settings.php
+msgid "How long API responses are cached, in seconds. Default: 3600 (1 hour). Set to 0 for no expiry."
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Image"
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Return Format"
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Relative URL"
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Absolute URL"
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Metadata Object"
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Allow Null"
+msgstr ""
+
+#. translators: %s: URL to the plugin settings page
+#: includes/class-acf-field-image.php
+msgid "&#9888; Configuration incomplete. Please complete all settings under <a href=\"%s\">Settings &#8594; FeichtMedia ImageManager</a>."
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Add image"
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Change image"
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Remove"
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Image not found."
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Search…"
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "No images found."
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "No categories found."
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Could not load images. Please try again."
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Could not load categories. Please try again."
+msgstr ""
+
+#. translators: %1$d: number of images currently shown, %2$d: total image count
+#: includes/class-acf-field-image.php
+msgid "Showing %1$d of %2$d"
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Select image"
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Select"
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Close"
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Loading…"
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Load more"
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "All images"
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "The ImageManager API key is not configured. Please check your settings."
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "View in ImageManager"
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Try again"
+msgstr ""
+
+#: includes/class-acf-field-image.php
+msgid "Upload"
+msgstr ""
+
+#: includes/class-graphql.php
+msgid "An image from the FeichtMedia ImageManager"
+msgstr ""
+
+#: feichtmedia-imagemanager-acf.php
+msgid "FeichtMedia ImageManager ACF requires Advanced Custom Fields to be installed and active."
+msgstr ""
+
+#. translators: label appended to links that open in a new browser tab, e.g. "Upload (opens in new window)"
+#: includes/class-acf-field-image.php
+msgid "opens in new window"
+msgstr ""
+
+#. translators: aria-label for the breadcrumb navigation landmark
+#: includes/class-acf-field-image.php
+msgid "Breadcrumb navigation"
+msgstr ""
+
+#. translators: ACF Conditional Logic operator label shown in the field group editor
+#: includes/class-acf-field-image.php
+msgid "Has a value"
+msgstr ""
+
+#. translators: ACF Conditional Logic operator label shown in the field group editor
+#: includes/class-acf-field-image.php
+msgid "Has no value"
+msgstr ""

@@ -1,0 +1,21 @@
+{
+  "name": "@feichtmedia/imagemanager-wordpress-acf",
+  "description": "Integration of the FeichtMedia ImageManager into Advanced Custom Fields (ACF) for WordPress.",
+  "version": "1.0.0",
+  "private": true,
+  "license": "GPL-2.0-or-later",
+  "author": {
+    "name": "FeichtMedia",
+    "url": "https://www.feicht-media.de/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/feichtmedia/imagemanager-wordpress-acf"
+  },
+  "bugs": {
+    "url": "https://github.com/feichtmedia/imagemanager-wordpress-acf/issues"
+  },
+  "scripts": {
+    "compile-languages": "wp i18n make-mo languages/"
+  }
+}

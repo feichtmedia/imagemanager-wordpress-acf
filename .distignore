@@ -1,0 +1,9 @@
+/.git
+/.github
+/.claude
+/node_modules
+package.json
+AGENTS.md
+CLAUDE.md
+README.md
+CONCEPT.md

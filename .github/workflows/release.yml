@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. 1.2.3)'
+        required: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Install WP-CLI
+        run: |
+          curl -sO https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+          chmod +x wp-cli.phar
+          sudo mv wp-cli.phar /usr/local/bin/wp
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: PHP syntax check
+        run: find . -name "*.php" -not -path "./node_modules/*" | xargs php -l
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "tag=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.event.inputs.version || 'dev' }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify version consistency
+        if: github.event_name == 'push'
+        run: |
+          VERSION="${{ steps.version.outputs.tag }}"
+          HEADER=$(grep -m1 'Version:' feichtmedia-imagemanager-acf.php | grep -oP '\d+\.\d+\.\d+')
+          CONSTANT=$(grep 'FM_IMAGEMANAGER_ACF_VERSION' feichtmedia-imagemanager-acf.php | grep -oP "'\K\d+\.\d+\.\d+")
+          README=$(grep 'Stable tag:' readme.txt | grep -oP '\d+\.\d+\.\d+')
+          echo "Tag:      $VERSION"
+          echo "Header:   $HEADER"
+          echo "Constant: $CONSTANT"
+          echo "readme:   $README"
+          if [ "$HEADER" != "$VERSION" ] || [ "$CONSTANT" != "$VERSION" ] || [ "$README" != "$VERSION" ]; then
+            echo "::error::Version mismatch – update all four version locations before tagging."
+            exit 1
+          fi
+
+      - name: Compile language files
+        run: npm run compile-languages
+
+      - name: Build plugin zip
+        run: |
+          VERSION="${{ steps.version.outputs.tag }}"
+          SLUG="feichtmedia-imagemanager-acf"
+          mkdir -p dist/${SLUG}
+          rsync -a --exclude='.git' --exclude='.github' --exclude='dist' \
+            --exclude='node_modules' --exclude='package.json' \
+            --exclude='AGENTS.md' --exclude='CLAUDE.md' --exclude='.claude' \
+            ./ dist/${SLUG}/
+          cd dist
+          zip -r "../${SLUG}-${VERSION}.zip" "${SLUG}/"
+
+      - name: Upload release asset
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: feichtmedia-imagemanager-acf-*.zip
+
+      - name: Deploy to WordPress.org
+        if: github.event_name == 'push'
+        uses: 10up/action-wordpress-plugin-deploy@v2
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          SLUG: feichtmedia-imagemanager-acf

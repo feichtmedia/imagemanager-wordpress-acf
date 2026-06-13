@@ -1,0 +1,172 @@
+# British English translation for FeichtMedia ImageManager ACF.
+# Copyright (C) 2026 FeichtMedia
+# This file is distributed under the same license as the FeichtMedia ImageManager ACF plugin.
+# FeichtMedia <info@feicht-media.de>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FeichtMedia ImageManager ACF 1.0.0\n"
+"Report-Msgid-Bugs-To: https://www.feicht-media.de/\n"
+"POT-Creation-Date: 2026-06-12T00:00:00+00:00\n"
+"PO-Revision-Date: 2026-06-12T00:00:00+00:00\n"
+"Last-Translator: FeichtMedia <info@feicht-media.de>\n"
+"Language-Team: English (UK) <en@li.org>\n"
+"Language: en_GB\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: FeichtMedia\n"
+"X-Domain: feichtmedia-imagemanager-acf\n"
+
+msgid "FeichtMedia ImageManager"
+msgstr "FeichtMedia ImageManager"
+
+msgid "API Connection"
+msgstr "API Connection"
+
+msgid "API Key"
+msgstr "API Key"
+
+msgid "Project ID"
+msgstr "Project ID"
+
+msgid "CDN Domain"
+msgstr "CDN Domain"
+
+msgid "Read-only API key for the ImageManager API (Bearer token)."
+msgstr "Read-only API key for the ImageManager API (Bearer token)."
+
+msgid "Your ImageManager usergroup / project ID (e.g. wordpress)."
+msgstr "Your ImageManager usergroup / project ID (e.g. wordpress)."
+
+msgid "CDN domain without protocol (e.g. cdn.example.com). The protocol will be stripped automatically."
+msgstr "CDN domain without protocol (e.g. cdn.example.com). The protocol will be stripped automatically."
+
+msgid "FeichtMedia ImageManager: Please complete the plugin settings under <a href=\"%s\">Settings &#8594; FeichtMedia ImageManager</a>."
+msgstr "FeichtMedia ImageManager: Please complete the plugin settings under <a href=\"%s\">Settings &#8594; FeichtMedia ImageManager</a>."
+
+msgid "ACF Field"
+msgstr "ACF Field"
+
+msgid "Metadata Cache"
+msgstr "Metadata Cache"
+
+msgid "Enable metadata cache"
+msgstr "Enable metadata cache"
+
+msgid "Caches ImageManager API metadata responses in WordPress transients. Applies only to ACF field value reads (e.g. get_field(), GraphQL) — the image browser in the editor is not affected. Disable for debugging or when image metadata changes frequently."
+msgstr "Caches ImageManager API metadata responses in WordPress transients. Applies only to ACF field value reads (e.g. get_field(), GraphQL) — the image browser in the editor is not affected. Disable for debugging or when image metadata changes frequently."
+
+msgid "Cache TTL"
+msgstr "Cache TTL"
+
+msgid "How long API responses are cached, in seconds. Default: 3600 (1 hour). Set to 0 for no expiry."
+msgstr "How long API responses are cached, in seconds. Default: 3600 (1 hour). Set to 0 for no expiry."
+
+msgid "Image"
+msgstr "Image"
+
+msgid "Return Format"
+msgstr "Return Format"
+
+msgid "Relative URL"
+msgstr "Relative URL"
+
+msgid "Absolute URL"
+msgstr "Absolute URL"
+
+msgid "Metadata Object"
+msgstr "Metadata Object"
+
+msgid "Allow Null"
+msgstr "Allow Null"
+
+msgid "&#9888; Configuration incomplete. Please complete all settings under <a href=\"%s\">Settings &#8594; FeichtMedia ImageManager</a>."
+msgstr "&#9888; Configuration incomplete. Please complete all settings under <a href=\"%s\">Settings &#8594; FeichtMedia ImageManager</a>."
+
+msgid "Add image"
+msgstr "Add image"
+
+msgid "Change image"
+msgstr "Change image"
+
+msgid "Remove"
+msgstr "Remove"
+
+msgid "Image not found."
+msgstr "Image not found."
+
+msgid "Search…"
+msgstr "Search…"
+
+msgid "No images found."
+msgstr "No images found."
+
+msgid "No categories found."
+msgstr "No categories found."
+
+msgid "Could not load images. Please try again."
+msgstr "Could not load images. Please try again."
+
+msgid "Could not load categories. Please try again."
+msgstr "Could not load categories. Please try again."
+
+msgid "Showing %1$d of %2$d"
+msgstr "Showing %1$d of %2$d"
+
+msgid "Select image"
+msgstr "Select image"
+
+msgid "Select"
+msgstr "Select"
+
+msgid "Close"
+msgstr "Close"
+
+msgid "Loading…"
+msgstr "Loading…"
+
+msgid "Load more"
+msgstr "Load more"
+
+msgid "All images"
+msgstr "All images"
+
+msgid "The ImageManager API key is not configured. Please check your settings."
+msgstr "The ImageManager API key is not configured. Please check your settings."
+
+msgid "View in ImageManager"
+msgstr "View in ImageManager"
+
+msgid "Try again"
+msgstr "Try again"
+
+msgid "Upload"
+msgstr "Upload"
+
+msgid "An image from the FeichtMedia ImageManager"
+msgstr "An image from the FeichtMedia ImageManager"
+
+msgid "FeichtMedia ImageManager ACF requires Advanced Custom Fields to be installed and active."
+msgstr "FeichtMedia ImageManager ACF requires Advanced Custom Fields to be installed and active."
+
+#. translators: label appended to links that open in a new browser tab
+#: includes/class-acf-field-image.php
+msgid "opens in new window"
+msgstr "opens in new window"
+
+#. translators: aria-label for the breadcrumb navigation landmark
+#: includes/class-acf-field-image.php
+msgid "Breadcrumb navigation"
+msgstr "Breadcrumb navigation"
+
+#. translators: ACF Conditional Logic operator label shown in the field group editor
+#: includes/class-acf-field-image.php
+msgid "Has a value"
+msgstr "Has a value"
+
+#. translators: ACF Conditional Logic operator label shown in the field group editor
+#: includes/class-acf-field-image.php
+msgid "Has no value"
+msgstr "Has no value"
