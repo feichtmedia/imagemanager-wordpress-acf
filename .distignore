@@ -3,6 +3,7 @@
 /.claude
 /.distignore
 /node_modules
+CHANGELOG.md
 package.json
 AGENTS.md
 CLAUDE.md

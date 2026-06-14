@@ -72,7 +72,7 @@ plugins_loaded priority 10 → this plugin initialises:
 
 | Constant                        | Value                                               | Configurable?   |
 | ------------------------------- | --------------------------------------------------- | --------------- |
-| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.0.1'`                                           | bump on release |
+| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.0.2'`                                           | bump on release |
 | `FM_IMAGEMANAGER_ACF_PATH`      | `plugin_dir_path(__FILE__)`                         | no              |
 | `FM_IMAGEMANAGER_ACF_URL`       | `plugin_dir_url(__FILE__)`                          | no              |
 | `FM_IMAGEMANAGER_API_URL`       | `'https://imagemanager.feicht-media.de/api/v2'`     | no              |

@@ -4,7 +4,7 @@ Tags: acf, advanced custom fields, imagemanager, dam, digital asset management
 Requires at least: 7.0
 Tested up to: 7.0
 Requires PHP: 8.2
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GPL-2.0-or-later
 
 Integrates the FeichtMedia ImageManager DAM into Advanced Custom Fields (ACF) as a native field type.
@@ -171,6 +171,9 @@ No. The plugin has read-only access to the ImageManager. It neither uploads, edi
 == Changelog ==
 
 Only plugin-level changes are listed here. Changes to the internal Shared Core Component (`includes/shared/imagemanager-core/`) are documented in `CHANGELOG.md` under a separate `Core` sub-section of the relevant version entry.
+
+= 1.0.2 – 2026-06-14 =
+* Removed internal changelog file from plugin release.
 
 = 1.0.1 – 2026-06-14 =
 * Prepared plugin for release on WordPress.org: fixed output escaping, translated readme to English, reduced tags to five, and minor code standard fixes.

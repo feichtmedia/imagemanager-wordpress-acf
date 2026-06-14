@@ -1,5 +1,9 @@
 # Changelog – FeichtMedia ImageManager ACF
 
+## [1.0.2] – 2026-06-14
+
+- Updated: Excluded the `CHANGELOG.md` from the WordPress.org SVN deployment via `.distignore` so it is not publicly available on the plugin directory. This changelog is only for development.
+
 ## [1.0.1] – 2026-06-14
 
 - Updated: `AGENTS.md` – split versioning section into Plugin Version and Core Version; clarifies when and where each is bumped and that Core changes are documented as `### Core` subsections in `CHANGELOG.md`.
