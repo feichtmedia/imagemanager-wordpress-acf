@@ -21,10 +21,10 @@ global $wpdb;
 $self = 'feichtmedia-imagemanager-acf/feichtmedia-imagemanager-acf.php';
 
 // 1) Remove this plugin from the shared consumer registry.
-$consumers = (array) get_option( 'feichtmedia_imagemanager_consumers', [] );
-$consumers = array_values( array_diff( $consumers, [ $self ] ) );
+$fm_imagemanager_consumers = (array) get_option( 'feichtmedia_imagemanager_consumers', [] );
+$fm_imagemanager_consumers = array_values( array_diff( $fm_imagemanager_consumers, [ $self ] ) );
 
-if ( empty( $consumers ) ) {
+if ( empty( $fm_imagemanager_consumers ) ) {
 	// 2) Last consumer — remove all shared options.
 	delete_option( 'feichtmedia_imagemanager_api_key' );
 	delete_option( 'feichtmedia_imagemanager_project_id' );
@@ -32,7 +32,7 @@ if ( empty( $consumers ) ) {
 	delete_option( 'feichtmedia_imagemanager_consumers' );
 } else {
 	// Other plugins still rely on the shared options — only update the registry.
-	update_option( 'feichtmedia_imagemanager_consumers', $consumers );
+	update_option( 'feichtmedia_imagemanager_consumers', $fm_imagemanager_consumers );
 }
 
 // 3) Always remove this plugin's own options.

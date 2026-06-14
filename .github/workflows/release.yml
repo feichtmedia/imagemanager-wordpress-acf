@@ -70,22 +70,28 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
           SLUG="feichtmedia-imagemanager-acf"
           mkdir -p dist/${SLUG}
-          rsync -a --exclude='.git' --exclude='.github' --exclude='dist' \
-            --exclude='node_modules' --exclude='package.json' \
-            --exclude='AGENTS.md' --exclude='CLAUDE.md' --exclude='.claude' \
+          rsync -a --exclude-from='.distignore' --exclude='dist' \
             ./ dist/${SLUG}/
           cd dist
           zip -r "../${SLUG}-${VERSION}.zip" "${SLUG}/"
+
+      - name: Extract release notes
+        if: github.event_name == 'push'
+        run: |
+          VERSION="${{ steps.version.outputs.tag }}"
+          awk "/^## \[${VERSION}\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md > release_notes.md
 
       - name: Upload release asset
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
+          body_path: release_notes.md
+          make_latest: "true"
           files: feichtmedia-imagemanager-acf-*.zip
 
       - name: Deploy to WordPress.org
         if: github.event_name == 'push'
-        uses: 10up/action-wordpress-plugin-deploy@v2
+        uses: 10up/action-wordpress-plugin-deploy@2.3.0
         env:
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}

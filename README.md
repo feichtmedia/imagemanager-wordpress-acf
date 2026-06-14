@@ -116,16 +116,38 @@ Requires **WPGraphQL for ACF v2.x** (`wpgraphql-acf`). The v0.x legacy API is no
 
 ## Release
 
-Releases are fully automated via `.github/workflows/release.yml`. Push a tag `v1.2.3` to trigger:
+Releases are fully automated via `.github/workflows/release.yml`. No manual steps are needed on GitHub after the tag is pushed.
+
+### Pre-release checklist
+
+Update all four version locations to the new version number before tagging:
+
+| Location | Field |
+|---|---|
+| `feichtmedia-imagemanager-acf.php` | `Version:` plugin header |
+| `feichtmedia-imagemanager-acf.php` | `FM_IMAGEMANAGER_ACF_VERSION` constant |
+| `readme.txt` | `Stable tag:` |
+| `CHANGELOG.md` | Add `## [X.Y.Z] – YYYY-MM-DD` section with release notes |
+
+The workflow verifies the first three automatically and aborts if they don't match the tag. The `CHANGELOG.md` section is used as the GitHub release description.
+
+### Trigger a release
+
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+### What the workflow does
 
 1. PHP syntax check (`php -l` on all PHP files)
-2. Version consistency check — aborts if the tag does not match all three script-verified locations: `Version:` plugin header, `FM_IMAGEMANAGER_ACF_VERSION` constant, `Stable tag:` in `readme.txt`. (Keep `CHANGELOG.md` in sync manually as a fourth location by convention.)
-3. Language file compilation (`npm run compile-languages` → `wp i18n make-mo`)
-4. GitHub release ZIP (dev-only files excluded via rsync: `.git`, `.github`, `.claude`, `node_modules`, `package.json`, `AGENTS.md`, `CLAUDE.md`)
-5. GitHub release asset upload
-6. WordPress.org SVN deployment via `10up/action-wordpress-plugin-deploy` (excludes per `.distignore`)
+2. Version consistency check across plugin header, constant, and `readme.txt`
+3. Language file compilation (`npm run compile-languages` → WP-CLI `make-mo`)
+4. Release ZIP — files excluded per `.distignore`
+5. GitHub release — body auto-populated from the matching `## [X.Y.Z]` section in `CHANGELOG.md`
+6. WordPress.org SVN deployment via `10up/action-wordpress-plugin-deploy`
 
-Steps 5 and 6 are skipped on `workflow_dispatch` runs; they only fire on tag pushes.
+Steps 5 and 6 only fire on tag pushes; `workflow_dispatch` skips them.
 
 **Required GitHub Secrets** (Settings → Secrets and variables → Actions):
 

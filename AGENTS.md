@@ -72,7 +72,7 @@ plugins_loaded priority 10 → this plugin initialises:
 
 | Constant                        | Value                                               | Configurable?   |
 | ------------------------------- | --------------------------------------------------- | --------------- |
-| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.0.0'`                                           | bump on release |
+| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.0.1'`                                           | bump on release |
 | `FM_IMAGEMANAGER_ACF_PATH`      | `plugin_dir_path(__FILE__)`                         | no              |
 | `FM_IMAGEMANAGER_ACF_URL`       | `plugin_dir_url(__FILE__)`                          | no              |
 | `FM_IMAGEMANAGER_API_URL`       | `'https://imagemanager.feicht-media.de/api/v2'`     | no              |
@@ -121,7 +121,7 @@ Both are registered and rendered by `FM_ImageManager_Settings` (the "ACF Field" 
 
 ## Documentation
 
-- **Language**: All comments in English. No exceptions.
+- **Language**: All comments and documentation in the `CHANGELOG.md` and `README.md` files must be in English. No exceptions.
 - **PHPDoc**: On every function (description, `@param`, `@return`).
 - **JSDoc**: On every function except trivial callbacks.
 - **Inline comments**: Explain _why_, not _what_. Used for workarounds, non-obvious logic, a11y decisions.
@@ -182,12 +182,16 @@ Entries always start with the action verb (Added, Fixed, Updated, Removed, …).
 
 ### Versioning
 
-Semantic versioning (`MAJOR.MINOR.PATCH`). On every release, update **all four** locations simultaneously:
+This project has **two independent version numbers**:
+
+**Plugin version** (`MAJOR.MINOR.PATCH`) — tracks the plugin itself. On every release, update all four locations simultaneously:
 
 1. `feichtmedia-imagemanager-acf.php` → `Version:` header
 2. `feichtmedia-imagemanager-acf.php` → `FM_IMAGEMANAGER_ACF_VERSION` constant
 3. `readme.txt` → `Stable tag:`
 4. `CHANGELOG.md` → new version header + entries
+
+**Core component version** — tracks `includes/shared/imagemanager-core/` only. Stored in `bootstrap.php` (`$GLOBALS['fm_imagemanager_core_candidates'][]`). Bump this **only** when `class-imagemanager-core.php` itself changes, and keep it in sync across **all** FeichtMedia ImageManager plugins (the highest bundled version wins at runtime). Core version changes are logged in `CHANGELOG.md` under a separate `### Core` sub-section within the relevant plugin version entry — they are **not** tracked in `readme.txt`.
 
 ### Notes on changes
 

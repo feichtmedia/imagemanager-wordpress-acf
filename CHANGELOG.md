@@ -1,5 +1,19 @@
 # Changelog – FeichtMedia ImageManager ACF
 
+## [1.0.1] – 2026-06-14
+
+- Updated: `AGENTS.md` – split versioning section into Plugin Version and Core Version; clarifies when and where each is bumped and that Core changes are documented as `### Core` subsections in `CHANGELOG.md`.
+- Updated: `readme.txt` – fully translated to English (WordPress.org Plugin Directory requirement since July 2025); reduced tags from 7 to 5 (WordPress.org limit); added note to the Changelog section that only plugin-level changes are listed there.
+- Updated: `includes/shared/imagemanager-core/bootstrap.php` – added comment to the Core version constant clarifying its independence from the plugin version.
+- Updated: `.github/workflows/release.yml` – release ZIP now uses `--exclude-from=.distignore` instead of hardcoded rsync excludes; GitHub release body is now automatically extracted from the matching `## [X.Y.Z]` section in `CHANGELOG.md` and set via `body_path`; added `make_latest: true`.
+- Updated: `README.md` – Release section rewritten: pre-release version checklist, single `git tag` + `git push` command to trigger the pipeline, step-by-step description of the automated workflow.
+- Fixed: Removed Plugin URI from the plugin header as it was identical to the Author URI (WordPress.org plugin directory requirement).
+- Fixed: `includes/class-acf-field-image.php` L131 – wrapped `$img_src` in `esc_url()` (`WordPress.Security.EscapeOutput`).
+- Fixed: `includes/class-acf-field-image.php` L132 – wrapped `$img_alt` in `esc_attr()` (`WordPress.Security.EscapeOutput`).
+- Fixed: `uninstall.php` – renamed local variable `$consumers` to `$fm_imagemanager_consumers` (`WordPress.NamingConventions.PrefixAllGlobals`).
+- Fixed: `.distignore` – added `.distignore` itself to the exclusion list so the file is not deployed to WordPress.org SVN.
+- Fixed: `.github/workflows/release.yml` – corrected `10up/action-wordpress-plugin-deploy` reference from `@v2` to `@2.3.0`; the action does not use `v`-prefixed tags.
+
 ## [1.0.0] – 2026-06-13
 
 Initial release of the FeichtMedia ImageManager ACF field type.

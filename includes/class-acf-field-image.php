@@ -128,8 +128,8 @@ class FM_ImageManager_ACF_Field_Image extends acf_field {
 			<div class="fm-imagemanager-preview-state" <?php echo ! $has_image ? ' style="display:none;"' : ''; ?>>
 				<div class="fm-imagemanager-preview">
 					<img
-						src="<?php echo $img_src; ?>"
-						alt="<?php echo $img_alt; ?>"
+						src="<?php echo esc_url( $img_src ); ?>"
+						alt="<?php echo esc_attr( $img_alt ); ?>"
 						data-fm-imagemanager-preview />
 					<div class="fm-imagemanager-img-error" style="display:none;">
 						<?php esc_html_e('Image not found.', 'feichtmedia-imagemanager-acf'); ?>

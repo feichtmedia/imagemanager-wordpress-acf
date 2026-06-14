@@ -1,6 +1,7 @@
 /.git
 /.github
 /.claude
+/.distignore
 /node_modules
 package.json
 AGENTS.md

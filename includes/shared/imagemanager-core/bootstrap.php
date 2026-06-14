@@ -14,6 +14,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Register this copy as a candidate (version + path to the class file).
+// NOTE: This is the Core component version, independent of the plugin version (FM_IMAGEMANAGER_ACF_VERSION).
+// Bump this only when class-imagemanager-core.php itself changes, and keep it in sync across all FM ImageManager plugins.
 $GLOBALS['fm_imagemanager_core_candidates']   = $GLOBALS['fm_imagemanager_core_candidates'] ?? [];
 $GLOBALS['fm_imagemanager_core_candidates'][] = [
 	'version' => '1.0.0',
