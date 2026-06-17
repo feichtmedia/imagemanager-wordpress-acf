@@ -1,5 +1,5 @@
 /**
- * FeichtMedia ImageManager ACF – file browser modal and field UI.
+ * FeichtMedia ImageManager for Advanced Custom Fields – file browser modal and field UI.
  *
  * One modal per page (lazily created on first open, then reused).
  * Assets are enqueued once regardless of how many field instances exist.
@@ -422,7 +422,7 @@
 					return { images: data, total: data.length };
 				}
 				const images = data.images || data.data || data.items || [];
-				const total = ( data.meta && data.meta.total ) || data.total || data.count || images.length;
+				const total = (data.meta && data.meta.total) || data.total || data.count || images.length;
 				return { images: images, total: Number(total) };
 			});
 	}
@@ -524,7 +524,7 @@
 			let catName = '';
 			if (catRaw !== null && catRaw !== undefined) {
 				if (typeof catRaw === 'object') {
-					catId  = catRaw.id || catRaw.categoryId || null;
+					catId = catRaw.id || catRaw.categoryId || null;
 					catName = catRaw.displayName || catRaw.name || '';
 				} else {
 					catId = catRaw; // scalar category ID

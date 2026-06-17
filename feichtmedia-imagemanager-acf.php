@@ -1,9 +1,9 @@
 <?php
 
 /**
- * Plugin Name: FeichtMedia ImageManager ACF
+ * Plugin Name: FeichtMedia ImageManager for Advanced Custom Fields
  * Description: ACF custom field type for the FeichtMedia ImageManager DAM. Editors pick images through a native WP-admin file browser; all API requests are proxied server-side so the API key never reaches the browser.
- * Version:     1.0.2
+ * Version:     1.1.0
  * Author:      FeichtMedia
  * Author URI:  https://www.feicht-media.de/
  * Text Domain: feichtmedia-imagemanager-acf
@@ -18,7 +18,7 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
-define('FM_IMAGEMANAGER_ACF_VERSION', '1.0.2');
+define('FM_IMAGEMANAGER_ACF_VERSION', '1.1.0');
 define('FM_IMAGEMANAGER_ACF_PATH', plugin_dir_path(__FILE__));
 define('FM_IMAGEMANAGER_ACF_URL', plugin_dir_url(__FILE__));
 define('FM_IMAGEMANAGER_API_URL', 'https://imagemanager.feicht-media.de/api/v2');
@@ -37,16 +37,22 @@ add_action('plugins_loaded', function () {
 
     // 3a) Hard dependency: ACF. Without it nothing can be registered.
     if (! class_exists('ACF')) {
-        add_action('admin_notices', 'fm_imagemanager_acf_missing_notice');
+        add_action('admin_notices', 'feichtmedia_imagemanager_acf_missing_notice');
         return;
     }
 
-    // 3b) Translations (defensive; just-in-time loading already handles most cases).
-    load_plugin_textdomain(
-        'feichtmedia-imagemanager-acf',
-        false,
-        dirname(plugin_basename(__FILE__)) . '/languages'
-    );
+    // 3b) Translations. Deferred to the `init` hook — calling load_plugin_textdomain()
+    // any earlier (e.g. directly here on plugins_loaded) triggers WordPress's
+    // "translation loading triggered too early" _doing_it_wrong() notice. Priority 1
+    // ensures the textdomain is ready before ACF registers field types on init:5
+    // (acf/include_field_types), so translated field labels are not missed.
+    add_action('init', function () {
+        load_plugin_textdomain(
+            'feichtmedia-imagemanager-acf',
+            false,
+            dirname(plugin_basename(__FILE__)) . '/languages'
+        );
+    }, 1);
 
     // 3c) Helpers + ACF field type.
     require_once FM_IMAGEMANAGER_ACF_PATH . 'includes/helpers.php';
@@ -77,8 +83,8 @@ add_action('plugins_loaded', function () {
  *
  * @return void
  */
-function fm_imagemanager_acf_missing_notice(): void {
+function feichtmedia_imagemanager_acf_missing_notice(): void {
     echo '<div class="notice notice-error"><p>';
-    echo esc_html__('FeichtMedia ImageManager ACF requires Advanced Custom Fields to be installed and active.', 'feichtmedia-imagemanager-acf');
+    echo esc_html__('FeichtMedia ImageManager for Advanced Custom Fields requires Advanced Custom Fields (ACF) to be installed and active.', 'feichtmedia-imagemanager-acf');
     echo '</p></div>';
 }

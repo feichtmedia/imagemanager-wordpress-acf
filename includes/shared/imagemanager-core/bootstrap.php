@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Bump this only when class-imagemanager-core.php itself changes, and keep it in sync across all FM ImageManager plugins.
 $GLOBALS['fm_imagemanager_core_candidates']   = $GLOBALS['fm_imagemanager_core_candidates'] ?? [];
 $GLOBALS['fm_imagemanager_core_candidates'][] = [
-	'version' => '1.0.0',
+	'version' => '1.1.0',
 	'file'    => __DIR__ . '/class-imagemanager-core.php',
 ];
 

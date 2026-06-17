@@ -1,10 +1,10 @@
-=== FeichtMedia ImageManager ACF ===
+=== FeichtMedia ImageManager for Advanced Custom Fields ===
 Contributors: feichtmedia
 Tags: acf, advanced custom fields, imagemanager, dam, digital asset management
 Requires at least: 7.0
 Tested up to: 7.0
 Requires PHP: 8.2
-Stable tag: 1.0.2
+Stable tag: 1.1.0
 License: GPL-2.0-or-later
 
 Integrates the FeichtMedia ImageManager DAM into Advanced Custom Fields (ACF) as a native field type.
@@ -114,8 +114,8 @@ Changes to title, alt text, copyright, or dimensions in the ImageManager will no
 
 To clear the cache for a specific image immediately:
 
-* **WP-CLI:** `wp transient delete fm_img_meta_$(php -r "echo md5('YOUR_IMAGE_ID');")`
-* **Code / mu-plugin:** `delete_transient( 'fm_img_meta_' . md5( 'YOUR_IMAGE_ID' ) );`
+* **WP-CLI:** `wp transient delete feichtmedia_imagemanager_acf_meta_$(php -r "echo md5('YOUR_IMAGE_ID');")`
+* **Code / mu-plugin:** `delete_transient( 'feichtmedia_imagemanager_acf_meta_' . md5( 'YOUR_IMAGE_ID' ) );`
 * **Caching plugin:** Use the "Delete all transients" or "Flush object cache" feature of your caching plugin.
 
 The **Relative URL** and **Absolute URL** formats are never cached – they are calculated purely at runtime from the stored image ID, project ID, and CDN domain, without any API calls.
@@ -168,9 +168,34 @@ No. The plugin does not upload images to WordPress and does not store any image 
 
 No. The plugin has read-only access to the ImageManager. It neither uploads, edits, nor deletes images.
 
+== External Services ==
+
+This plugin connects to the FeichtMedia ImageManager API to retrieve image lists, category structures, and image metadata. Requests are made server-side (via a WordPress REST API proxy) when an editor opens the file browser or when a field with the "Metadata" return format is displayed. The API key entered in the plugin settings is used exclusively on the server and is never transmitted to the browser or included in page output.
+
+Data transmitted to the FeichtMedia ImageManager API with each request:
+
+* **API key** – sent in the Authorization header to authenticate the request.
+* **Project ID** – part of the request URL for images in the preview.
+* **Image ID** – included in the URL for single-image metadata requests.
+* **WordPress site URL** – transmitted automatically as part of the HTTP User-Agent header (e.g. `WordPress/7.0; https://example.com FeichtMedia-ImageManager-ACF/1.1.0`).
+* **IP address of the WordPress server** – logged by the ImageManager API as the origin of the HTTP request.
+
+No visitor IP addresses, post content, or other personally identifiable information is transmitted. All requests originate from the WordPress server, not from the visitor's browser.
+
+* [FeichtMedia ImageManager Terms of Service](https://www.feicht-media.de/imagemanager-nutzungsbedingungen)
+* [FeichtMedia ImageManager Privacy Policy](https://www.feicht-media.de/datenschutz/imagemanager)
+
 == Changelog ==
 
 Only plugin-level changes are listed here. Changes to the internal Shared Core Component (`includes/shared/imagemanager-core/`) are documented in `CHANGELOG.md` under a separate `Core` sub-section of the relevant version entry.
+
+= 1.1.0 – 2026-06-17 =
+* Updated: Plugin display name to "FeichtMedia ImageManager for Advanced Custom Fields" (WordPress.org trademark policy). The plugin slug and text domain are unchanged.
+* Updated: Translation loading moved from `plugins_loaded` to `add_action('init', …, 1)` to fix the "translation loading triggered too early" notice introduced in WordPress 6.7.
+* Updated: CDN domain validation now enforces real hostname syntax (RFC 1123) and rejects paths, query strings, ports, and malformed labels instead of saving invalid input. Invalid values are rejected with an admin notice; the previously saved value is kept.
+* Updated: CDN domain validation error message now reads "Your change was not saved." instead of the technical "The previous value was kept."
+* Fixed: Plugin-specific function `feichtmedia_imagemanager_acf_missing_notice()` now uses the correct naming prefix (was `fm_imagemanager_acf_missing_notice()`).
+* Fixed: Metadata transient cache key corrected from `fm_img_meta_` to `feichtmedia_imagemanager_acf_meta_` — the old key was never matched by the uninstall cleanup query, so transients were not removed on plugin deletion.
 
 = 1.0.2 – 2026-06-14 =
 * Removed internal changelog file from plugin release.
@@ -182,6 +207,9 @@ Only plugin-level changes are listed here. Changes to the internal Shared Core C
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.1.0 =
+Plugin display name changed (slug unchanged). No database changes. Safe to update.
 
 = 1.0.1 =
 No database changes. Safe to update.

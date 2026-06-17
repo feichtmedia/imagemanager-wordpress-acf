@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Stateless helper functions for FeichtMedia ImageManager ACF.
+ * Stateless helper functions for FeichtMedia ImageManager for Advanced Custom Fields.
  *
  * Covers: value parsing (current + legacy formats), URL building,
  * API-to-canonical field mapping, and cached metadata fetching.
@@ -102,9 +102,9 @@ function feichtmedia_imagemanager_map_image(array $data, string $group_id, strin
 /**
  * Fetch image metadata from the ImageManager API, with Transient caching.
  *
- * Cache key: fm_img_meta_{md5(imageId)}, TTL controlled by the plugin setting
- * feichtmedia_imagemanager_acf_cache_ttl (default 3600 s). Caching can be
- * disabled entirely via feichtmedia_imagemanager_acf_cache_enabled.
+ * Cache key: feichtmedia_imagemanager_acf_meta_{md5(imageId)}, TTL controlled by the
+ * plugin setting feichtmedia_imagemanager_acf_cache_ttl (default 3600 s). Caching can
+ * be disabled entirely via feichtmedia_imagemanager_acf_cache_enabled.
  * On API error, returns minimal data built from locally known values so that
  * format_value() can still return a usable (if incomplete) result.
  *
@@ -114,7 +114,7 @@ function feichtmedia_imagemanager_map_image(array $data, string $group_id, strin
  * @return array Canonical metadata array (see feichtmedia_imagemanager_map_image()).
  */
 function feichtmedia_imagemanager_get_metadata(string $group_id, string $image_id, string $domain): array {
-	$cache_key     = 'fm_img_meta_' . md5($image_id);
+	$cache_key     = 'feichtmedia_imagemanager_acf_meta_' . md5($image_id);
 	$cache_enabled = (bool) get_option('feichtmedia_imagemanager_acf_cache_enabled', 1);
 
 	if ($cache_enabled) {

@@ -1,4 +1,4 @@
-# AGENTS.md – FeichtMedia ImageManager ACF
+# AGENTS.md – FeichtMedia ImageManager for Advanced Custom Fields
 
 This file gives AI coding assistants like Claude Code the context they need to work on this plugin. Read it fully before writing any code.
 
@@ -10,6 +10,7 @@ The complete specification lives in **`CONCEPT.md`** (or the equivalent concept 
 
 A WordPress plugin that registers a custom ACF field type (`imagemanager_image`) for the FeichtMedia ImageManager DAM. Editors pick images through a native WP-admin file browser (no iFrame); the plugin proxies all API requests server-side so the API key never reaches the browser.
 
+- **Display name:** FeichtMedia ImageManager for Advanced Custom Fields (slug/text domain unchanged — see [CHANGELOG.md](CHANGELOG.md) v1.1.0)
 - **Plugin slug / text domain:** `feichtmedia-imagemanager-acf`
 - **Main file:** `feichtmedia-imagemanager-acf.php`
 - **Requires:** PHP 8.2+, WordPress 7.0+, ACF (free or PRO)
@@ -55,8 +56,9 @@ feichtmedia-imagemanager-acf/
 ```
 plugins_loaded priority 5  → imagemanager-core boots (highest bundled version wins)
 plugins_loaded priority 10 → this plugin initialises:
-    1. ACF present? No → admin notice fm_imagemanager_acf_missing_notice(), return early.
-    2. load_plugin_textdomain()
+    1. ACF present? No → admin notice feichtmedia_imagemanager_acf_missing_notice(), return early.
+    2. Register add_action('init', …, 1) closure that calls load_plugin_textdomain()
+       (deferred — see "i18n rules"; priority 1 keeps it ahead of ACF's init:5 field-type registration)
     3. require helpers.php
     4. require class-acf-field-image.php → register on acf/include_field_types
     5. require class-settings.php → (new FM_ImageManager_Settings())->register()
@@ -72,7 +74,7 @@ plugins_loaded priority 10 → this plugin initialises:
 
 | Constant                        | Value                                               | Configurable?   |
 | ------------------------------- | --------------------------------------------------- | --------------- |
-| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.0.2'`                                           | bump on release |
+| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.1.0'`                                           | bump on release |
 | `FM_IMAGEMANAGER_ACF_PATH`      | `plugin_dir_path(__FILE__)`                         | no              |
 | `FM_IMAGEMANAGER_ACF_URL`       | `plugin_dir_url(__FILE__)`                          | no              |
 | `FM_IMAGEMANAGER_API_URL`       | `'https://imagemanager.feicht-media.de/api/v2'`     | no              |
@@ -90,6 +92,8 @@ plugins_loaded priority 10 → this plugin initialises:
 | `feichtmedia_imagemanager_consumers`  | Reference-counting registry (array of plugin basenames) |
 
 All are registered, rendered, and sanitised by `FM_ImageManager_Core`. This plugin only reads them.
+
+`feichtmedia_imagemanager_domain` is validated by `FM_ImageManager_Core::sanitize_domain()` against real hostname syntax (RFC 1123 labels, or a raw IP). Invalid input (paths, query strings, credentials, ports, malformed labels) is rejected — the previous value is kept and a `settings_errors()` notice is shown on the options page, rather than saving a partially-fixed value.
 
 ---
 
@@ -220,6 +224,7 @@ Also, the `AGENTS.md` file must be reviewed and updated if necessary to reflect 
 - **No JS i18n pipeline.** All UI strings translated in PHP and passed to JS via `wp_localize_script` as `window.fmImageManager.strings`. The JS reads from that object — never calls `wp.i18n.__()`.
 - `wp_set_script_translations()` is **not used**.
 - `.po`/`.mo` files are the single source of truth for all translations (PHP and JS alike).
+- `load_plugin_textdomain()` is called from an `add_action('init', …, 1)` closure, never directly during `plugins_loaded` — calling it earlier triggers WordPress's "translation loading triggered too early" `_doing_it_wrong()` notice. Priority 1 keeps it ahead of ACF's `init:5` field-type registration (`acf/include_field_types`) so translated field labels still resolve.
 
 Supported locales: `en_GB`, `de_DE`, `de_DE_formal`, `de_AT` (formal/Sie), `de_CH` (formal/Sie, no ß).
 Fallback for any other locale: en_US (automatic via gettext — no code needed).
@@ -352,7 +357,7 @@ The resolver always calls `get_field()` which runs through `format_value()` — 
 1. **One modal DOM node** — guarded against double-init. Never instantiated per field.
 2. **Assets enqueued once** — one script handle, one style handle. `wp_localize_script` outputs the config object once.
 3. **Zero HTTP calls on field render** — neither in the editor nor on the frontend for URL formats.
-4. **Metadata format** — always go through `feichtmedia_imagemanager_get_metadata()` which uses a Transient (key: `fm_img_meta_{md5(imageId)}`, TTL: `feichtmedia_imagemanager_acf_cache_ttl` option, default 3600 s; caching can be disabled via `feichtmedia_imagemanager_acf_cache_enabled`). Never call the API directly inside `format_value()`.
+4. **Metadata format** — always go through `feichtmedia_imagemanager_get_metadata()` which uses a Transient (key: `feichtmedia_imagemanager_acf_meta_{md5(imageId)}`, TTL: `feichtmedia_imagemanager_acf_cache_ttl` option, default 3600 s; caching can be disabled via `feichtmedia_imagemanager_acf_cache_enabled`). Never call the API directly inside `format_value()`.
 5. **Default return format is `relative_url`** — zero HTTP, pure string construction.
 
 ---
@@ -364,10 +369,8 @@ The resolver always calls `get_field()` which runs through `format_value()` — 
   1. Remove this plugin's basename from `feichtmedia_imagemanager_consumers`.
   2. If the registry is now empty → delete all shared options (`feichtmedia_imagemanager_api_key`, `feichtmedia_imagemanager_project_id`, `feichtmedia_imagemanager_domain`, `feichtmedia_imagemanager_consumers`).
   3. If other consumers remain → only update the registry, keep shared options.
-  4. Always: delete plugin-specific options (`feichtmedia_imagemanager_acf_cache_enabled`, `feichtmedia_imagemanager_acf_cache_ttl`) and metadata transients via a direct `$wpdb` query matching `_transient_fm_im_meta_%`.
+  4. Always: delete plugin-specific options (`feichtmedia_imagemanager_acf_cache_enabled`, `feichtmedia_imagemanager_acf_cache_ttl`) and metadata transients via a direct `$wpdb` query matching `_transient_feichtmedia_imagemanager_acf_meta_%`.
   5. Never delete `post_meta`.
-
-> **Note:** The transient cache key set in `helpers.php` is `fm_img_meta_{md5(imageId)}` (prefix `fm_img_meta_`), but `uninstall.php` deletes rows matching `fm_im_meta_%` (prefix `fm_im_meta_`). These do not match — `uninstall.php` currently does not clean up the metadata transients. Fix either the cache key in `helpers.php` or the LIKE pattern in `uninstall.php` before bumping to v1.1.0.
 
 ---
 

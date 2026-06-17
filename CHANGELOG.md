@@ -1,4 +1,24 @@
-# Changelog – FeichtMedia ImageManager ACF
+# Changelog – FeichtMedia ImageManager for Advanced Custom Fields
+
+## [1.1.0] – 2026-06-17
+
+Addresses feedback from the WordPress.org Plugin Review team (trademark, prefixing, sanitization, translation loading timing).
+
+- Updated: Plugin display name to "FeichtMedia ImageManager for Advanced Custom Fields" (WordPress.org trademark policy on third-party product names). The plugin slug, text domain, and all shared/cross-plugin identifiers (`feichtmedia_imagemanager_*` options, `FM_ImageManager_*` classes) are unchanged.
+  - `feichtmedia-imagemanager-acf.php` → `Plugin Name:` header
+  - `readme.txt` → plugin title header
+  - Admin notice text in `feichtmedia_imagemanager_acf_missing_notice()`
+- Updated: `load_plugin_textdomain()` is now called inside an `add_action('init', …, 1)` callback instead of directly during `plugins_loaded` (priority 10). Avoids WordPress's "translation loading triggered too early" `_doing_it_wrong()` notice; priority 1 keeps it ahead of ACF's own `init:5` field-type registration so translated field labels still resolve correctly.
+- Updated: `FM_ImageManager_Core::sanitize_domain()` (shared Core component) now validates the CDN domain against real hostname syntax (RFC 1123 labels, or a raw IP) and rejects invalid input (paths, query strings, credentials, ports, malformed labels) instead of saving it. On rejection, the previously stored value is kept and a `settings_errors()` notice is shown on the options page.
+- Updated: CDN domain validation error message changed from "The previous value was kept." to "Your change was not saved." — removes technical jargon and makes the outcome immediately clear to end users without context.
+- Updated: `.github/workflows/release.yml` — release ZIP renamed from `feichtmedia-imagemanager-acf-{version}.zip` to `feichtmedia-imagemanager-acf.zip` (predictable, version-agnostic asset name); added `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` on job level to resolve Node.js 20 deprecation warnings from `actions/checkout@v4`, `actions/setup-node@v4`, and `softprops/action-gh-release@v2`.
+- Fixed: Renamed `fm_imagemanager_acf_missing_notice()` to `feichtmedia_imagemanager_acf_missing_notice()` — this plugin-specific function did not follow the documented `feichtmedia_imagemanager_{name}()` helper-function naming convention (`WordPress.NamingConventions.PrefixAllGlobals`).
+- Fixed: Metadata transient cache key prefix changed from `fm_img_meta_` to `feichtmedia_imagemanager_acf_meta_` in `helpers.php`, and the `uninstall.php` cleanup query updated to match. This also resolves the long-standing prefix mismatch (`fm_img_meta_` vs. `fm_im_meta_`) that caused `uninstall.php` to silently skip deleting these transients.
+- Added: `== External Services ==` section to `readme.txt` (WordPress.org requirement). Documents that the plugin connects server-side to the FeichtMedia ImageManager API; lists all transmitted data (API key, project ID, image ID, WordPress site URL via User-Agent, WordPress server IP address); clarifies that no visitor IPs or post content are transmitted; links to Terms of Service and Privacy Policy.
+
+### Core
+
+- Bumped Core component version `1.0.0` → `1.1.0` in `bootstrap.php` (`class-imagemanager-core.php` changed: hardened `sanitize_domain()`, added `settings_errors()` call in `render_options_page()`).
 
 ## [1.0.2] – 2026-06-14
 

@@ -130,15 +130,72 @@ class FM_ImageManager_Core {
 	}
 
 	/**
-	 * Strip protocol prefix from the CDN domain value if present.
+	 * Strip the protocol prefix from the CDN domain value and validate that what
+	 * remains is a real hostname.
+	 *
+	 * Invalid input (paths, query strings, credentials, ports, malformed labels) is
+	 * rejected outright rather than silently stripped — saving a partially-fixed
+	 * value would mask the underlying mistake. On rejection, the previously stored
+	 * value is kept and a settings error is queued for display.
 	 *
 	 * @param string $value Raw user input.
-	 * @return string Sanitized domain without protocol.
+	 * @return string Sanitized domain without protocol, or the previous value if invalid.
 	 */
 	public function sanitize_domain(string $value): string {
 		$value = sanitize_text_field($value);
-		$value = (string) preg_replace('#^https?://#', '', $value);
-		return rtrim($value, '/');
+		$value = (string) preg_replace('#^https?://#i', '', $value);
+		$value = rtrim($value, '/');
+
+		// Empty is a valid (incomplete-configuration) state — nothing to validate.
+		if ($value === '') {
+			return '';
+		}
+
+		if (! $this->is_valid_hostname($value)) {
+			add_settings_error(
+				'feichtmedia_imagemanager_domain',
+				'feichtmedia_imagemanager_invalid_domain',
+				__('Please enter a valid CDN domain without a protocol, path, or port (e.g. cdn.example.com). Your change was not saved.', 'feichtmedia-imagemanager-acf')
+			);
+			return (string) get_option('feichtmedia_imagemanager_domain', '');
+		}
+
+		return $value;
+	}
+
+	/**
+	 * Check whether a string is a syntactically valid hostname.
+	 *
+	 * Rejects anything still carrying path, query, fragment, credential, or port
+	 * segments, then validates the remainder against RFC 1123 hostname label rules
+	 * (or a raw IP address, for local/dev CDN setups). Does not resolve the DNS
+	 * name — it only guards against paths and malformed input reaching the option.
+	 *
+	 * @param string $host Candidate hostname (protocol/trailing slash already stripped).
+	 * @return bool True if syntactically valid.
+	 */
+	private function is_valid_hostname(string $host): bool {
+		if (strlen($host) > 253) {
+			return false;
+		}
+
+		// A real hostname never contains any of these — catches paths, query strings,
+		// fragments, userinfo, and explicit ports in one pass. Delimiter is `~` (not `#`)
+		// because `#` itself must appear in the character class.
+		if (preg_match('~[/?#@: ]~', $host)) {
+			return false;
+		}
+
+		if (filter_var($host, FILTER_VALIDATE_IP)) {
+			return true;
+		}
+
+		// RFC 1123: dot-separated labels, 1–63 chars each, alphanumeric/hyphen,
+		// never starting or ending with a hyphen.
+		return (bool) preg_match(
+			'/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/',
+			$host
+		);
 	}
 
 	/**
@@ -191,6 +248,7 @@ class FM_ImageManager_Core {
 ?>
 		<div class="wrap">
 			<h1><?php echo esc_html__('FeichtMedia ImageManager', 'feichtmedia-imagemanager-acf'); ?></h1>
+			<?php settings_errors(); ?>
 			<form method="post" action="options.php">
 				<?php
 				settings_fields('feichtmedia_imagemanager');

@@ -1,14 +1,14 @@
-# British English translation for FeichtMedia ImageManager ACF.
+# British English translation for FeichtMedia ImageManager for Advanced Custom Fields.
 # Copyright (C) 2026 FeichtMedia
-# This file is distributed under the same license as the FeichtMedia ImageManager ACF plugin.
+# This file is distributed under the same license as the FeichtMedia ImageManager for Advanced Custom Fields plugin.
 # FeichtMedia <info@feicht-media.de>, 2026.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: FeichtMedia ImageManager ACF 1.0.0\n"
+"Project-Id-Version: FeichtMedia ImageManager for Advanced Custom Fields 1.1.0\n"
 "Report-Msgid-Bugs-To: https://www.feicht-media.de/\n"
-"POT-Creation-Date: 2026-06-12T00:00:00+00:00\n"
-"PO-Revision-Date: 2026-06-12T00:00:00+00:00\n"
+"POT-Creation-Date: 2026-06-16T00:00:00+00:00\n"
+"PO-Revision-Date: 2026-06-16T00:00:00+00:00\n"
 "Last-Translator: FeichtMedia <info@feicht-media.de>\n"
 "Language-Team: English (UK) <en@li.org>\n"
 "Language: en_GB\n"
@@ -42,6 +42,9 @@ msgstr "Your ImageManager usergroup / project ID (e.g. wordpress)."
 
 msgid "CDN domain without protocol (e.g. cdn.example.com). The protocol will be stripped automatically."
 msgstr "CDN domain without protocol (e.g. cdn.example.com). The protocol will be stripped automatically."
+
+msgid "Please enter a valid CDN domain without a protocol, path, or port (e.g. cdn.example.com). Your change was not saved."
+msgstr "Please enter a valid CDN domain without a protocol, path, or port (e.g. cdn.example.com). Your change was not saved."
 
 msgid "FeichtMedia ImageManager: Please complete the plugin settings under <a href=\"%s\">Settings &#8594; FeichtMedia ImageManager</a>."
 msgstr "FeichtMedia ImageManager: Please complete the plugin settings under <a href=\"%s\">Settings &#8594; FeichtMedia ImageManager</a>."
@@ -148,8 +151,8 @@ msgstr "Upload"
 msgid "An image from the FeichtMedia ImageManager"
 msgstr "An image from the FeichtMedia ImageManager"
 
-msgid "FeichtMedia ImageManager ACF requires Advanced Custom Fields to be installed and active."
-msgstr "FeichtMedia ImageManager ACF requires Advanced Custom Fields to be installed and active."
+msgid "FeichtMedia ImageManager for Advanced Custom Fields requires Advanced Custom Fields (ACF) to be installed and active."
+msgstr "FeichtMedia ImageManager for Advanced Custom Fields requires Advanced Custom Fields (ACF) to be installed and active."
 
 #. translators: label appended to links that open in a new browser tab
 #: includes/class-acf-field-image.php

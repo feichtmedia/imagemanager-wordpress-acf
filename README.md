@@ -1,4 +1,4 @@
-# FeichtMedia ImageManager ACF – Developer Notes
+# FeichtMedia ImageManager for Advanced Custom Fields – Developer Notes
 
 Internal reference for developers. For the full specification and AI-agent context see [AGENTS.md](AGENTS.md).
 
@@ -41,7 +41,7 @@ Optional integrations activate automatically when present:
 
 | Constant | Value |
 |---|---|
-| `FM_IMAGEMANAGER_ACF_VERSION` | `'1.0.0'` (bump on every release) |
+| `FM_IMAGEMANAGER_ACF_VERSION` | `'1.1.0'` (bump on every release) |
 | `FM_IMAGEMANAGER_ACF_PATH` | `plugin_dir_path(__FILE__)` |
 | `FM_IMAGEMANAGER_ACF_URL` | `plugin_dir_url(__FILE__)` |
 | `FM_IMAGEMANAGER_API_URL` | `'https://imagemanager.feicht-media.de/api/v2'` |
@@ -55,7 +55,7 @@ Optional integrations activate automatically when present:
 plugins_loaded priority 5  → imagemanager-core boots (highest bundled version wins)
 plugins_loaded priority 10 → this plugin initialises:
     1. ACF present? No → show admin notice, return early.
-    2. load_plugin_textdomain()
+    2. Register add_action('init', …, 1) closure that calls load_plugin_textdomain() (deferred)
     3. require helpers.php + class-acf-field-image.php → register on acf/include_field_types
     4. FM_ImageManager_Settings::register() (always)
     5. api_key option set? → FM_ImageManager_REST_Proxy::register()
@@ -111,6 +111,7 @@ Requires **WPGraphQL for ACF v2.x** (`wpgraphql-acf`). The v0.x legacy API is no
 - PHP strings use `__()`, `esc_html__()`, `_e()` etc. with text domain `feichtmedia-imagemanager-acf`.
 - **No JS i18n pipeline.** All UI strings are translated in PHP and passed to JS via `wp_localize_script` as `window.fmImageManager.strings`. `wp_set_script_translations()` is not used.
 - Supported locales: `en_GB`, `de_DE`, `de_DE_formal`, `de_AT`, `de_CH`. Any other locale falls back to en_US automatically.
+- `load_plugin_textdomain()` runs on `init` (priority 1), not on `plugins_loaded` — avoids WordPress's "translation loading triggered too early" notice while still loading before ACF registers field types (`init:5`).
 
 ---
 

@@ -1,5 +1,5 @@
 /* ============================================================================
-   FeichtMedia ImageManager ACF — field UI and file browser modal styles
+   FeichtMedia ImageManager for Advanced Custom Fields — field UI and file browser modal styles
    Targets WordPress 7.0+ admin.
    ============================================================================ */
 
@@ -7,302 +7,306 @@
 
 /* Visually hidden but always present in the accessibility tree (for live regions). */
 .fm-imagemanager-sr-only {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	padding: 0;
-	margin: -1px;
-	overflow: hidden;
-	clip: rect(0, 0, 0, 0);
-	white-space: nowrap;
-	border: 0;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ── Field: shared container ────────────────────────────────────────────── */
 
 .fm-imagemanager-field {
-	display: block;
+  display: block;
 }
 
 /* ── Field: configuration-incomplete notice ─────────────────────────────── */
 
 .fm-imagemanager-config-notice {
-	padding: 8px 12px;
-	background: #fcf0f1;
-	border-left: 4px solid #d63638;
-	font-size: 13px;
-	color: #50575e;
+  padding: 8px 12px;
+  background: #fcf0f1;
+  border-left: 4px solid #d63638;
+  font-size: 13px;
+  color: #50575e;
 }
 
 .fm-imagemanager-config-notice a {
-	color: var(--wp-admin-theme-color, #2271b1);
+  color: var(--wp-admin-theme-color, #2271b1);
 }
 
 /* ── Field: empty state ─────────────────────────────────────────────────── */
 
 .fm-imagemanager-empty-state {
-	padding: 4px 0;
+  padding: 4px 0;
 }
 
 /* ── Field: preview state ───────────────────────────────────────────────── */
 
 .fm-imagemanager-preview {
-	display: inline-block;
-	position: relative;
-	margin-bottom: 8px;
-	max-width: 300px;
+  display: inline-block;
+  position: relative;
+  margin-bottom: 8px;
+  max-width: 300px;
 }
 
 .fm-imagemanager-preview img {
-	display: block;
-	max-width: 100%;
-	height: auto;
-	border: 1px solid #dcdcde;
-	border-radius: 2px;
-	background: #f6f7f7;
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid #dcdcde;
+  border-radius: 2px;
+  background: #f6f7f7;
 }
 
 .fm-imagemanager-img-error {
-	padding: 16px;
-	background: #f6f7f7;
-	border: 1px solid #dcdcde;
-	border-radius: 2px;
-	font-size: 13px;
-	/* #646970 on #f6f7f7 = 5.06 : 1 — passes WCAG AA 4.5 : 1 */
-	color: #646970;
-	text-align: center;
+  padding: 16px;
+  background: #f6f7f7;
+  border: 1px solid #dcdcde;
+  border-radius: 2px;
+  font-size: 13px;
+  /* #646970 on #f6f7f7 = 5.06 : 1 — passes WCAG AA 4.5 : 1 */
+  color: #646970;
+  text-align: center;
 }
 
 .fm-imagemanager-actions {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 /* ── Modal: dialog element ──────────────────────────────────────────────── */
 
 body.fm-imagemanager-modal-open {
-	overflow: hidden;
+  overflow: hidden;
 }
 
 dialog.fm-imagemanager-modal {
-	padding: 0;
-	border: none;
-	flex-direction: column;
-	width: min(960px, calc(100vw - 40px));
-	max-height: calc(100vh - 40px);
-	background: #fff;
-	border-radius: 2px;
-	box-shadow: 0 4px 32px rgba(0, 0, 0, 0.4);
-	overflow: hidden;
-	margin: auto;
+  padding: 0;
+  border: none;
+  flex-direction: column;
+  width: min(960px, calc(100vw - 40px));
+  max-height: calc(100vh - 40px);
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  margin: auto;
 }
 
 dialog.fm-imagemanager-modal[open] {
-	display: flex;
+  display: flex;
 }
 
 dialog.fm-imagemanager-modal::backdrop {
-	background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.7);
 }
 
 /* ── Modal: header ──────────────────────────────────────────────────────── */
 
 .fm-imagemanager-modal-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 12px;
-	padding: 14px 20px;
-	border-bottom: 1px solid #dcdcde;
-	background: #f6f7f7;
-	flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #dcdcde;
+  background: #f6f7f7;
+  flex-shrink: 0;
 }
 
 .fm-imagemanager-modal-title {
-	margin: 0;
-	font-size: 16px;
-	font-weight: 600;
-	color: #1d2327;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1d2327;
 }
 
 .fm-imagemanager-modal-tools {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	flex: 1;
-	justify-content: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 .fm-imagemanager-search {
-	width: 220px;
-	max-width: 100%;
+  width: 220px;
+  max-width: 100%;
 }
 
 .fm-imagemanager-btn-close {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 32px;
-	height: 32px;
-	padding: 0;
-	cursor: pointer;
-	color: #646970 !important;
-	border: none;
-	background: none;
-	border-radius: 50%;
-	transition: background 0.15s, color 0.15s;
-	text-decoration: none !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  cursor: pointer;
+  color: #646970 !important;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  transition:
+    background 0.15s,
+    color 0.15s;
+  text-decoration: none !important;
 }
 
 .fm-imagemanager-btn-close::before {
-	font: normal 20px/1 dashicons;
-	content: "\f158";
-	display: inline-block;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
+  font: normal 20px/1 dashicons;
+  content: "\f158";
+  display: inline-block;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .fm-imagemanager-btn-close:hover,
 .fm-imagemanager-btn-close:focus {
-	color: var(--wp-admin-theme-color, #2271b1) !important;
-	background: rgba(0, 0, 0, 0.06);
+  color: var(--wp-admin-theme-color, #2271b1) !important;
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .fm-imagemanager-btn-close:focus-visible {
-	outline: 2px solid var(--wp-admin-theme-color, #2271b1);
-	outline-offset: 2px;
+  outline: 2px solid var(--wp-admin-theme-color, #2271b1);
+  outline-offset: 2px;
 }
 
 /* ── Modal: breadcrumbs ─────────────────────────────────────────────────── */
 
 .fm-imagemanager-breadcrumbs {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: 2px;
-	padding: 8px 20px;
-	border-bottom: 1px solid #dcdcde;
-	background: #fff;
-	font-size: 13px;
-	flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 8px 20px;
+  border-bottom: 1px solid #dcdcde;
+  background: #fff;
+  font-size: 13px;
+  flex-shrink: 0;
 }
 
 /* Minimum 24 × 24 px touch target (WCAG 2.5.8). */
 .fm-imagemanager-crumb {
-	display: inline-flex;
-	align-items: center;
-	justify-content: flex-start;
-	color: var(--wp-admin-theme-color, #2271b1);
-	text-decoration: none;
-	background: none;
-	border: none;
-	padding: 4px 6px !important;
-	cursor: pointer;
-	font-size: 13px;
-	min-height: 24px;
-	border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  color: var(--wp-admin-theme-color, #2271b1);
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 4px 6px !important;
+  cursor: pointer;
+  font-size: 13px;
+  min-height: 24px;
+  border-radius: 2px;
 }
 
 .fm-imagemanager-crumb:not(.fm-imagemanager-crumb--current):hover,
 .fm-imagemanager-crumb:not(.fm-imagemanager-crumb--current):focus {
-	text-decoration: underline;
-	color: var(--wp-admin-theme-color, #135e96);
+  text-decoration: underline;
+  color: var(--wp-admin-theme-color, #135e96);
 }
 
 .fm-imagemanager-crumb:focus-visible {
-	outline: 2px solid var(--wp-admin-theme-color, #2271b1);
-	outline-offset: 2px;
+  outline: 2px solid var(--wp-admin-theme-color, #2271b1);
+  outline-offset: 2px;
 }
 
 .fm-imagemanager-crumb--current {
-	color: #1d2327;
-	font-weight: 500;
-	cursor: default;
-	text-decoration: none;
+  color: #1d2327;
+  font-weight: 500;
+  cursor: default;
+  text-decoration: none;
 }
 
 .fm-imagemanager-crumb-sep {
-	color: #787c82;
-	padding: 0 2px;
-	user-select: none;
+  color: #787c82;
+  padding: 0 2px;
+  user-select: none;
 }
 
 /* ── Modal: scrollable body ─────────────────────────────────────────────── */
 
 .fm-imagemanager-modal-body {
-	flex: 1;
-	overflow-y: auto;
-	padding: 16px 20px;
-	position: relative;
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  position: relative;
 }
 
 /* ── Modal: categories section ──────────────────────────────────────────── */
 
 .fm-imagemanager-cats-section {
-	margin-bottom: 20px;
+  margin-bottom: 20px;
 }
 
 .fm-imagemanager-cats-grid {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .fm-imagemanager-cat-tile {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 8px 14px;
-	background: #f6f7f7;
-	border: 1px solid #dcdcde;
-	border-radius: 4px;
-	cursor: pointer;
-	font-size: 13px;
-	color: #1d2327;
-	transition: background 0.15s, border-color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #f6f7f7;
+  border: 1px solid #dcdcde;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #1d2327;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .fm-imagemanager-cat-tile:hover,
 .fm-imagemanager-cat-tile:focus {
-	background: #e8f0fe;
-	border-color: var(--wp-admin-theme-color, #2271b1);
+  background: #e8f0fe;
+  border-color: var(--wp-admin-theme-color, #2271b1);
 }
 
 .fm-imagemanager-cat-tile:focus-visible {
-	outline: 2px solid var(--wp-admin-theme-color, #2271b1);
-	outline-offset: 2px;
+  outline: 2px solid var(--wp-admin-theme-color, #2271b1);
+  outline-offset: 2px;
 }
 
 .fm-imagemanager-cat-icon::before {
-	font: normal 18px/1 dashicons;
-	content: "\f318";
-	display: inline-block;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
+  font: normal 18px/1 dashicons;
+  content: "\f318";
+  display: inline-block;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* ── Modal: image grid ──────────────────────────────────────────────────── */
 
 .fm-imagemanager-imgs-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-	gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
 }
 
 .fm-imagemanager-imgs-grid.is-loading {
-	opacity: 0.5;
-	pointer-events: none;
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .fm-imagemanager-no-results {
-	grid-column: 1 / -1;
-	margin: 0;
-	padding: 32px 0;
-	text-align: center;
-	/* #646970 on #fff = 5.53 : 1 — passes WCAG AA 4.5 : 1 */
-	color: #646970;
-	font-size: 13px;
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 32px 0;
+  text-align: center;
+  /* #646970 on #fff = 5.53 : 1 — passes WCAG AA 4.5 : 1 */
+  color: #646970;
+  font-size: 13px;
 }
 
 /* ── Modal: image tile ──────────────────────────────────────────────────── */
@@ -314,91 +318,95 @@ dialog.fm-imagemanager-modal::backdrop {
  * WCAG 2.4.11 focus indicator (2 px perimeter with ≥ 3 : 1 contrast).
  */
 .fm-imagemanager-img-tile {
-	display: flex;
-	flex-direction: column;
-	position: relative;
-	border: 2px solid transparent;
-	border-radius: 2px;
-	overflow: hidden;
-	background: #f6f7f7;
-	transition: border-color 0.15s, box-shadow 0.15s;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  border: 2px solid transparent;
+  border-radius: 2px;
+  overflow: hidden;
+  background: #f6f7f7;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 
 .fm-imagemanager-img-tile:hover,
 .fm-imagemanager-img-tile:focus-within {
-	border-color: var(--wp-admin-theme-color, #2271b1);
-	box-shadow: 0 0 0 2px rgba(34, 113, 177, 0.2);
+  border-color: var(--wp-admin-theme-color, #2271b1);
+  box-shadow: 0 0 0 2px rgba(34, 113, 177, 0.2);
 }
 
 .fm-imagemanager-img-tile.is-selected {
-	border-color: var(--wp-admin-theme-color, #2271b1);
-	box-shadow: 0 0 0 2px rgba(34, 113, 177, 0.3);
-	background: #e8f0fe;
+  border-color: var(--wp-admin-theme-color, #2271b1);
+  box-shadow: 0 0 0 2px rgba(34, 113, 177, 0.3);
+  background: #e8f0fe;
 }
 
 /* Select button fills the tile; tile's :focus-within border is the focus indicator. */
 .fm-imagemanager-img-select {
-	display: flex;
-	flex-direction: column;
-	flex: 1;
-	background: none;
-	border: none;
-	padding: 0;
-	margin: 0;
-	cursor: pointer;
-	text-align: left;
-	width: 100%;
-	color: inherit;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  color: inherit;
 }
 
 .fm-imagemanager-img-select:focus {
-	outline: none; /* tile :focus-within border provides the WCAG 2.4.11 indicator */
+  outline: none; /* tile :focus-within border provides the WCAG 2.4.11 indicator */
 }
 
 .fm-imagemanager-img-thumb {
-	position: relative;
-	aspect-ratio: 4 / 3;
-	overflow: hidden;
-	/* use same "transparent" background pattern as in the ImageManager dashboard */
-	background: url("data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPHN2ZyB2ZXJzaW9uPSIxLjEiIGlkPSJFYmVuZV8xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4PSIwcHgiIHk9IjBweCIKCSB3aWR0aD0iNjRweCIgaGVpZ2h0PSI2NHB4IiB2aWV3Qm94PSIwIDAgNjQgNjQiIHN0eWxlPSJlbmFibGUtYmFja2dyb3VuZDpuZXcgMCAwIDY0IDY0OyIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+CjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+Cgkuc3Qwe2ZpbGw6I0UyRTJFMjt9Cgkuc3Qxe2ZpbGw6I0Y1RjVGNTt9Cjwvc3R5bGU+CjxyZWN0IGNsYXNzPSJzdDAiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIvPgo8cmVjdCB4PSIzMiIgY2xhc3M9InN0MCIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2Ii8+CjxyZWN0IHg9IjQ4IiBjbGFzcz0ic3QxIiB3aWR0aD0iMTYiIGhlaWdodD0iMTYiLz4KPHJlY3QgeD0iMTYiIGNsYXNzPSJzdDEiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIvPgo8cmVjdCB5PSIxNiIgY2xhc3M9InN0MSIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2Ii8+CjxyZWN0IHg9IjMyIiB5PSIxNiIgY2xhc3M9InN0MSIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2Ii8+CjxyZWN0IHg9IjQ4IiB5PSIxNiIgY2xhc3M9InN0MCIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2Ii8+CjxyZWN0IHg9IjE2IiB5PSIxNiIgY2xhc3M9InN0MCIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2Ii8+CjxyZWN0IHk9IjMyIiBjbGFzcz0ic3QwIiB3aWR0aD0iMTYiIGhlaWdodD0iMTYiLz4KPHJlY3QgeD0iMzIiIHk9IjMyIiBjbGFzcz0ic3QwIiB3aWR0aD0iMTYiIGhlaWdodD0iMTYiLz4KPHJlY3QgeD0iNDgiIHk9IjMyIiBjbGFzcz0ic3QxIiB3aWR0aD0iMTYiIGhlaWdodD0iMTYiLz4KPHJlY3QgeD0iMTYiIHk9IjMyIiBjbGFzcz0ic3QxIiB3aWR0aD0iMTYiIGhlaWdodD0iMTYiLz4KPHJlY3QgeT0iNDgiIGNsYXNzPSJzdDEiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIvPgo8cmVjdCB4PSIzMiIgeT0iNDgiIGNsYXNzPSJzdDEiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIvPgo8cmVjdCB4PSI0OCIgeT0iNDgiIGNsYXNzPSJzdDAiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIvPgo8cmVjdCB4PSIxNiIgeT0iNDgiIGNsYXNzPSJzdDAiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIvPgo8L3N2Zz4K");
-	flex-shrink: 0;
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  /* use same "transparent" background pattern as in the ImageManager dashboard */
+  background: url("data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPHN2ZyB2ZXJzaW9uPSIxLjEiIGlkPSJFYmVuZV8xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4PSIwcHgiIHk9IjBweCIKCSB3aWR0aD0iNjRweCIgaGVpZ2h0PSI2NHB4IiB2aWV3Qm94PSIwIDAgNjQgNjQiIHN0eWxlPSJlbmFibGUtYmFja2dyb3VuZDpuZXcgMCAwIDY0IDY0OyIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+CjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+Cgkuc3Qwe2ZpbGw6I0UyRTJFMjt9Cgkuc3Qxe2ZpbGw6I0Y1RjVGNTt9Cjwvc3R5bGU+CjxyZWN0IGNsYXNzPSJzdDAiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIvPgo8cmVjdCB4PSIzMiIgY2xhc3M9InN0MCIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2Ii8+CjxyZWN0IHg9IjQ4IiBjbGFzcz0ic3QxIiB3aWR0aD0iMTYiIGhlaWdodD0iMTYiLz4KPHJlY3QgeD0iMTYiIGNsYXNzPSJzdDEiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIvPgo8cmVjdCB5PSIxNiIgY2xhc3M9InN0MSIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2Ii8+CjxyZWN0IHg9IjMyIiB5PSIxNiIgY2xhc3M9InN0MSIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2Ii8+CjxyZWN0IHg9IjQ4IiB5PSIxNiIgY2xhc3M9InN0MCIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2Ii8+CjxyZWN0IHg9IjE2IiB5PSIxNiIgY2xhc3M9InN0MCIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2Ii8+CjxyZWN0IHk9IjMyIiBjbGFzcz0ic3QwIiB3aWR0aD0iMTYiIGhlaWdodD0iMTYiLz4KPHJlY3QgeD0iMzIiIHk9IjMyIiBjbGFzcz0ic3QwIiB3aWR0aD0iMTYiIGhlaWdodD0iMTYiLz4KPHJlY3QgeD0iNDgiIHk9IjMyIiBjbGFzcz0ic3QxIiB3aWR0aD0iMTYiIGhlaWdodD0iMTYiLz4KPHJlY3QgeD0iMTYiIHk9IjMyIiBjbGFzcz0ic3QxIiB3aWR0aD0iMTYiIGhlaWdodD0iMTYiLz4KPHJlY3QgeT0iNDgiIGNsYXNzPSJzdDEiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIvPgo8cmVjdCB4PSIzMiIgeT0iNDgiIGNsYXNzPSJzdDEiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIvPgo8cmVjdCB4PSI0OCIgeT0iNDgiIGNsYXNzPSJzdDAiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIvPgo8cmVjdCB4PSIxNiIgeT0iNDgiIGNsYXNzPSJzdDAiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIvPgo8L3N2Zz4K");
+  flex-shrink: 0;
 }
 
 .fm-imagemanager-img-thumb img {
-	display: block;
-	width: 100%;
-	height: 100%;
-	object-fit: contain;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 /* Checkmark overlay — visible only when tile is selected */
 .fm-imagemanager-img-check {
-	position: absolute;
-	top: 6px;
-	right: 6px;
-	width: 22px;
-	height: 22px;
-	background: var(--wp-admin-theme-color, #2271b1);
-	color: #fff;
-	border-radius: 50%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	opacity: 0;
-	transition: opacity 0.15s;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  background: var(--wp-admin-theme-color, #2271b1);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
 }
 
 .fm-imagemanager-img-check::before {
-	font: normal 14px/1 dashicons;
-	content: "\f147";
-	display: inline-block;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-	transform: translateX(-1px); /* for visual centering of the checkmark glyph, which is optically off-center */
+  font: normal 14px/1 dashicons;
+  content: "\f147";
+  display: inline-block;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transform: translateX(
+    -1px
+  ); /* for visual centering of the checkmark glyph, which is optically off-center */
 }
 
 .fm-imagemanager-img-tile.is-selected .fm-imagemanager-img-check {
-	opacity: 1;
+  opacity: 1;
 }
 
 /*
@@ -408,223 +416,227 @@ dialog.fm-imagemanager-modal::backdrop {
  * Visible on tile hover or when the link itself receives keyboard focus.
  */
 .fm-imagemanager-img-info {
-	position: absolute;
-	bottom: 52px;
-	right: 6px;
-	width: 22px;
-	height: 22px;
-	background: rgba(0, 0, 0, 0.55);
-	color: #fff;
-	border-radius: 50%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	text-decoration: none;
-	opacity: 0;
-	transition: opacity 0.15s;
+  position: absolute;
+  bottom: 52px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.15s;
 }
 
 .fm-imagemanager-img-info::before {
-	font: normal 14px/1 dashicons;
-	content: "\f348";
-	display: inline-block;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
+  font: normal 14px/1 dashicons;
+  content: "\f348";
+  display: inline-block;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .fm-imagemanager-img-tile:hover .fm-imagemanager-img-info,
 .fm-imagemanager-img-info:focus {
-	opacity: 1;
+  opacity: 1;
 }
 
 .fm-imagemanager-img-info:focus-visible {
-	opacity: 1;
-	outline: 2px solid #fff;
-	outline-offset: 2px;
+  opacity: 1;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 .fm-imagemanager-img-info:hover {
-	background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.8);
 }
 
 /* Image metadata below thumbnail */
 .fm-imagemanager-img-meta {
-	padding: 6px 8px;
-	font-size: 11px;
-	/* #646970 on #f6f7f7 = 5.06 : 1 — passes WCAG AA */
-	color: #646970;
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
+  padding: 6px 8px;
+  font-size: 11px;
+  /* #646970 on #f6f7f7 = 5.06 : 1 — passes WCAG AA */
+  color: #646970;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .fm-imagemanager-img-name {
-	font-size: 12px;
-	color: #1d2327;
-	font-weight: 500;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
+  font-size: 12px;
+  color: #1d2327;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .fm-imagemanager-img-info-row {
-	/* #646970 on #f6f7f7 = 5.06 : 1 — passes WCAG AA */
-	color: #646970;
+  /* #646970 on #f6f7f7 = 5.06 : 1 — passes WCAG AA */
+  color: #646970;
 }
 
 /* ── Modal: pagination ──────────────────────────────────────────────────── */
 
 .fm-imagemanager-pagination {
-	margin-top: 16px;
-	text-align: center;
+  margin-top: 16px;
+  text-align: center;
 }
 
 /* ── Skeleton loader ─────────────────────────────────────────────────────── */
 
 @keyframes fm-imagemanager-shimmer {
-	0%   { background-position: -600px 0; }
-	100% { background-position: 600px 0; }
+  0% {
+    background-position: -600px 0;
+  }
+  100% {
+    background-position: 600px 0;
+  }
 }
 
 .fm-imagemanager-skeleton-bar {
-	background: linear-gradient(90deg, #e8e9ea 25%, #f3f4f5 50%, #e8e9ea 75%);
-	background-size: 1200px 100%;
-	animation: fm-imagemanager-shimmer 1.5s infinite linear;
-	border-radius: 3px;
-	display: block;
+  background: linear-gradient(90deg, #e8e9ea 25%, #f3f4f5 50%, #e8e9ea 75%);
+  background-size: 1200px 100%;
+  animation: fm-imagemanager-shimmer 1.5s infinite linear;
+  border-radius: 3px;
+  display: block;
 }
 
 .fm-imagemanager-skeleton-cat {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 8px 14px;
-	background: #f6f7f7;
-	border: 1px solid #dcdcde;
-	border-radius: 2px;
-	pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #f6f7f7;
+  border: 1px solid #dcdcde;
+  border-radius: 2px;
+  pointer-events: none;
 }
 
 .fm-imagemanager-skeleton-cat-icon {
-	width: 18px;
-	height: 18px;
-	flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .fm-imagemanager-skeleton-cat-label {
-	height: 13px;
+  height: 13px;
 }
 
 .fm-imagemanager-skeleton-img {
-	display: flex;
-	flex-direction: column;
-	border: 2px solid transparent;
-	border-radius: 2px;
-	overflow: hidden;
-	background: #f6f7f7;
-	pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  border: 2px solid transparent;
+  border-radius: 2px;
+  overflow: hidden;
+  background: #f6f7f7;
+  pointer-events: none;
 }
 
 .fm-imagemanager-skeleton-img-thumb {
-	aspect-ratio: 4 / 3;
-	border-radius: 0;
+  aspect-ratio: 4 / 3;
+  border-radius: 0;
 }
 
 .fm-imagemanager-skeleton-img-meta {
-	padding: 6px 8px;
-	display: flex;
-	flex-direction: column;
-	gap: 5px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .fm-imagemanager-skeleton-img-name {
-	height: 12px;
+  height: 12px;
 }
 
 .fm-imagemanager-skeleton-img-subline {
-	height: 11px;
-	width: 60%;
+  height: 11px;
+  width: 60%;
 }
 
 /* ── Modal: spinner ─────────────────────────────────────────────────────── */
 
 .fm-imagemanager-spinner {
-	position: absolute;
-	inset: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: rgba(255, 255, 255, 0.75);
-	font-size: 13px;
-	color: #50575e;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  color: #50575e;
 }
 
 /* ── Modal: error message ───────────────────────────────────────────────── */
 
 .fm-imagemanager-error-msg {
-	margin-top: 12px;
-	padding: 8px 12px;
-	background: #fcf0f1;
-	border-left: 4px solid #d63638;
-	font-size: 13px;
-	color: #50575e;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: #fcf0f1;
+  border-left: 4px solid #d63638;
+  font-size: 13px;
+  color: #50575e;
 }
 
 /* ── Modal: footer ──────────────────────────────────────────────────────── */
 
 .fm-imagemanager-modal-footer {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 12px;
-	padding: 12px 20px;
-	border-top: 1px solid #dcdcde;
-	background: #f6f7f7;
-	flex-shrink: 0;
-	position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  border-top: 1px solid #dcdcde;
+  background: #f6f7f7;
+  flex-shrink: 0;
+  position: relative;
 }
 
 .fm-imagemanager-btn-upload {
-	display: inline-flex !important;
-	align-items: center;
-	gap: 4px;
-	text-decoration: none !important;
-	white-space: nowrap;
-	flex-shrink: 0;
-	position: relative;
-	z-index: 1;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none !important;
+  white-space: nowrap;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .fm-imagemanager-btn-upload .dashicons-before {
-	font-size: 16px;
-	line-height: 1 !important;
+  font-size: 16px;
+  line-height: 1 !important;
 }
 
 .fm-imagemanager-count {
-	position: absolute;
-	left: 50%;
-	transform: translateX(-50%);
-	font-size: 12px;
-	color: #787c82;
-	white-space: nowrap;
-	pointer-events: none;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: #787c82;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* ── Responsive tweaks ──────────────────────────────────────────────────── */
 
-@media ( max-width: 600px ) {
-	dialog.fm-imagemanager-modal {
-		width: 100vw;
-		max-height: 100vh;
-		border-radius: 0;
-		margin: 0;
-	}
+@media (max-width: 600px) {
+  dialog.fm-imagemanager-modal {
+    width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+    margin: 0;
+  }
 
-	.fm-imagemanager-imgs-grid {
-		grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-	}
+  .fm-imagemanager-imgs-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
 
-	.fm-imagemanager-search {
-		width: 140px;
-	}
+  .fm-imagemanager-search {
+    width: 140px;
+  }
 }

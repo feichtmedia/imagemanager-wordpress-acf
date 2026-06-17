@@ -1,6 +1,6 @@
 <?php
 /**
- * Uninstall handler for FeichtMedia ImageManager ACF.
+ * Uninstall handler for FeichtMedia ImageManager for Advanced Custom Fields.
  *
  * Runs only on plugin deletion (not on deactivation). Uses reference-counting
  * to decide whether shared options can be safely removed:
@@ -42,6 +42,6 @@ delete_option( 'feichtmedia_imagemanager_acf_cache_ttl' );
 // 4) Always remove this plugin's own regenerable metadata transients.
 $wpdb->query(
 	"DELETE FROM {$wpdb->options}
-	 WHERE option_name LIKE '\_transient\_fm\_im\_meta\_%'
-	    OR option_name LIKE '\_transient\_timeout\_fm\_im\_meta\_%'"
+	 WHERE option_name LIKE '\_transient\_feichtmedia\_imagemanager\_acf\_meta\_%'
+	    OR option_name LIKE '\_transient\_timeout\_feichtmedia\_imagemanager\_acf\_meta\_%'"
 );
