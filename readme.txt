@@ -4,7 +4,7 @@ Tags: acf, advanced custom fields, imagemanager, dam, digital asset management
 Requires at least: 7.0
 Tested up to: 7.0
 Requires PHP: 8.2
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPL-2.0-or-later
 
 Integrates the FeichtMedia ImageManager DAM into Advanced Custom Fields (ACF) as a native field type.
@@ -189,6 +189,16 @@ No visitor IP addresses, post content, or other personally identifiable informat
 
 Only plugin-level changes are listed here. Changes to the internal Shared Core Component (`includes/shared/imagemanager-core/`) are documented in `CHANGELOG.md` under a separate `Core` sub-section of the relevant version entry.
 
+= 1.2.0 – 2026-06-24 =
+* Added: Plugin icons for the WordPress plugin directory and the plugin list inside WordPress.
+* Updated: Categories in the modal are now listed in a fixed responsive grid layout instead of a floating layout. This improves the overview.
+* Updated: The "Allow Null" field setting now lives on the field's "Validation" tab next to "Required" instead of on the "General" tab. The two options no longer conflict: a required field can never be cleared, and "Allow Null" only takes effect on optional fields, where it controls whether an already-selected image may be removed.
+* Fixed: The loading placeholders (skeletons) in the file browser were not displayed while images and categories were loading. They now appear again, and the category placeholders use the same responsive grid layout as the real categories.
+* Fixed: A previously selected image could not be loaded in the file browser when the field's stored value was a legacy relative URL — for example a field that was originally a plain text field and later switched to the ImageManager image type. The value is now normalised to a bare image ID before the request, so the modal opens with the correct image already selected instead of failing.
+* Fixed: File browser button in ACF block fields had no effect when editing via the Expanded Editor (v3 blocks only). Switched from per-field event binding to global event delegation so button clicks are caught regardless of whether ACF's `ready_field` lifecycle event fires (affected by the iFrame-based block editor in WordPress 7 and ACF's React-based Expanded Editor).
+* Fixed: Selecting or changing an image in any ACF Repeater row other than the first always updated the first row instead of the clicked one. The modal now stores a direct reference to the exact DOM element that opened it instead of querying by ACF field key, which is identical for all rows in a repeater.
+* Fixed: GraphQL resolver returned `null` for `imagemanager_image` fields inside ACF Repeaters. The resolver now reads the pre-formatted value from the row data instead of calling `get_field()` with a null source ID, which previously fell back to the global post context and found no value.
+
 = 1.1.0 – 2026-06-17 =
 * Updated: Plugin display name to "FeichtMedia ImageManager for Advanced Custom Fields" (WordPress.org trademark policy). The plugin slug and text domain are unchanged.
 * Updated: Translation loading moved from `plugins_loaded` to `add_action('init', …, 1)` to fix the "translation loading triggered too early" notice introduced in WordPress 6.7.
@@ -207,6 +217,10 @@ Only plugin-level changes are listed here. Changes to the internal Shared Core C
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.2.0 =
+* Fixes ACF Repeater compatibility: selecting images in the editor always updated the first row; GraphQL returned null for all Repeater sub-field values. Also fixes the file browser button in ACF blocks edited via the Expanded Editor (WordPress 7 / ACF 6.8+). No database changes. Safe to update.
+* The 'Allow null' setting has been moved from the 'General' to the 'Validation' tab in the ACF field admin settings.
 
 = 1.1.0 =
 Plugin display name changed (slug unchanged). No database changes. Safe to update.

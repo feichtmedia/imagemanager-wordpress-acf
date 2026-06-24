@@ -27,9 +27,13 @@
 	// Global filters for thumbnail images to reduce bandwidth and increase loading speed.
 	const THUMB_FILTERS = 'fit-in/300x300/filters:quality(80)/filters:strip_exif()/filters:strip_icc()/filters:no_upscale()';
 
+	// Placeholder tile counts shown while a full page of data is loading.
+	const SKELETON_CAT_COUNT = 4; // one full row of the 4-column category grid
+	const SKELETON_IMG_COUNT = 8;
+
 
 	// ── State ──────────────────────────────────────────────────────────────────
-	let activeFieldKey = null;
+	let activeFieldEl = null; // direct DOM reference to the field that opened the modal
 	let selectedImage = null;
 	let preSelectedImageId = null; // image ID already stored in the field when the browser opens
 	let modalEl = null; // single modal DOM node, created lazily
@@ -45,8 +49,50 @@
 	let currentOffset = 0;
 	let currentSearch = '';
 	let isLoading = false;
+	let skeletonsActive = false; // true while skeleton placeholders stand in for grid content
 
 	// ── ACF field initialisation ────────────────────────────────────────────────
+
+	// ── Global event delegation ──────────────────────────────────────────────────
+	// Delegation replaces per-field binding from initField so that button clicks
+	// are caught even when ACF's ready_field event does not fire — this happens in
+	// the ACF 6.8+ Expanded Editor for block fields where the block editor context
+	// bypasses the standard ACF field lifecycle (and in any iFrame-based editor
+	// where the script runs in the same frame as the fields).
+
+	document.addEventListener('click', function (e) {
+		const openBtn = e.target.closest('.fm-imagemanager-btn-add, .fm-imagemanager-btn-change');
+		if (openBtn) {
+			const fieldEl = openBtn.closest('.fm-imagemanager-field');
+			if (fieldEl) {
+				triggerEl = openBtn;
+				activeFieldEl = fieldEl;
+				openBrowser();
+			}
+			return;
+		}
+		const removeBtn = e.target.closest('.fm-imagemanager-btn-remove');
+		if (removeBtn) {
+			const fieldEl = removeBtn.closest('.fm-imagemanager-field');
+			if (fieldEl) {
+				clearField(fieldEl);
+			}
+		}
+	});
+
+	// 'error' does not bubble — use capture phase to catch thumbnail 404s.
+	document.addEventListener('error', function (e) {
+		const img = e.target;
+		if (!img || !img.hasAttribute('data-fm-imagemanager-preview')) {
+			return;
+		}
+		img.style.display = 'none';
+		const errEl = img.closest('.fm-imagemanager-preview') &&
+			img.closest('.fm-imagemanager-preview').querySelector('.fm-imagemanager-img-error');
+		if (errEl) {
+			errEl.style.display = '';
+		}
+	}, true);
 
 	if (typeof acf !== 'undefined') {
 		acf.addAction('ready_field/type=imagemanager_image', initField);
@@ -111,62 +157,37 @@
 	}
 
 	/**
-	 * Bind events to a single field instance.
+	 * ACF field lifecycle hook — retained for forward compatibility.
+	 * All field interactions are handled via global event delegation above.
 	 *
 	 * @param {Object} field - ACF field object.
 	 * @returns {void}
 	 */
-	function initField(field) {
-		const $el = field.$el;
-
-		$el.on('click', '.fm-imagemanager-btn-add, .fm-imagemanager-btn-change', function () {
-			// Save the triggering element so focus can be restored when the modal closes.
-			triggerEl = this;
-			openBrowser(field.get('key'));
-		});
-
-		$el.on('click', '.fm-imagemanager-btn-remove', function () {
-			clearField($el[0]);
-		});
-
-		// Thumbnail 404 handling — show placeholder, do NOT clear the stored value
-		// because the error may be caused by a misconfigured domain setting.
-		const preview = $el.find('[data-fm-imagemanager-preview]')[0];
-		if (preview) {
-			preview.addEventListener('error', function () {
-				this.style.display = 'none';
-				const errEl = this.closest('.fm-imagemanager-preview')
-					&& this.closest('.fm-imagemanager-preview').querySelector('.fm-imagemanager-img-error');
-				if (errEl) {
-					errEl.style.display = '';
-				}
-			});
-		}
-	}
+	function initField(field) {} // eslint-disable-line no-unused-vars
 
 	// ── Modal lifecycle ─────────────────────────────────────────────────────────
 
 	/**
-	 * Open the file browser modal for a specific ACF field instance.
-	 * Sets activeFieldKey so a confirmed selection goes to the right field.
+	 * Open the file browser modal for the field stored in activeFieldEl.
+	 * Must be called after activeFieldEl has been set by the click handler.
 	 *
-	 * @param {string} fieldKey - ACF field key of the triggering field instance.
 	 * @returns {void}
 	 */
-	function openBrowser(fieldKey) {
-		activeFieldKey = fieldKey;
+	function openBrowser() {
 		selectedImage = null;
 
 		// Read the image ID that is currently stored in the field so it can be
 		// highlighted in the grid — the user needs to see which image is active.
+		// activeFieldEl holds the exact DOM element that triggered the modal, so
+		// it is always the correct repeater row — querySelector by key would match
+		// the first row only (all rows share the same ACF field definition key).
 		preSelectedImageId = null;
-		const fieldEl = document.querySelector(
-			'.fm-imagemanager-field[data-field-key="' + CSS.escape(fieldKey) + '"]'
-		);
-		if (fieldEl) {
-			const input = fieldEl.querySelector('[data-fm-imagemanager-input]');
+		if (activeFieldEl) {
+			const input = activeFieldEl.querySelector('[data-fm-imagemanager-input]');
 			if (input && input.value) {
-				preSelectedImageId = input.value;
+				// Normalise legacy relative-URL values to a bare image ID; the raw value
+				// would be encoded as "%2F…" and 404 against the /images/{id} route.
+				preSelectedImageId = normalizeImageId(input.value) || null;
 			}
 		}
 
@@ -177,17 +198,16 @@
 
 		resetBrowser();
 
-		// Clear stale grid content before showing so old tiles are never visible.
-		const catsGrid = modalEl.querySelector('.fm-imagemanager-cats-grid');
-		const imgsGrid = modalEl.querySelector('.fm-imagemanager-imgs-grid');
+		// Replace any stale tiles with skeleton placeholders so the grids show a
+		// loading state from the moment the modal opens — both for the immediate
+		// loadPage() below and during the resolveImageCategory() round-trip that
+		// precedes it when an image is pre-selected. currentSearch was just reset,
+		// so category skeletons are always shown here.
 		const paginationEl = modalEl.querySelector('.fm-imagemanager-pagination');
-		if (catsGrid) { catsGrid.innerHTML = ''; }
-		if (imgsGrid) { imgsGrid.innerHTML = ''; }
 		if (paginationEl) { paginationEl.innerHTML = ''; }
-		const catsSection = modalEl.querySelector('.fm-imagemanager-cats-section');
-		if (catsSection) { catsSection.style.display = 'none'; }
 		const countEl = modalEl.querySelector('.fm-imagemanager-count');
 		if (countEl) { countEl.textContent = ''; }
+		renderSkeletons(true);
 
 		document.body.classList.add('fm-imagemanager-modal-open');
 		modalEl.showModal();
@@ -209,8 +229,10 @@
 		setConfirmEnabled(!!preSelectedImageId);
 
 		if (preSelectedImageId) {
-			// Show the spinner and resolve the image's category path before loading
-			// so the grid opens directly in the right category with the image visible.
+			// Resolve the image's category path before loading so the grid opens
+			// directly in the right category with the image visible. The skeletons
+			// rendered above stay visible during this round-trip (setLoading keeps
+			// the overlay spinner suppressed while skeletonsActive is true).
 			setLoading(true);
 			resolveImageCategory(preSelectedImageId)
 				.catch(function () { /* silently fall back to root on any error */ })
@@ -233,7 +255,7 @@
 			modalEl.close();
 		}
 		document.body.classList.remove('fm-imagemanager-modal-open');
-		activeFieldKey = null;
+		activeFieldEl = null;
 		selectedImage = null;
 		preSelectedImageId = null;
 
@@ -359,6 +381,10 @@
 		setLoading(true);
 		clearError();
 
+		// Show skeleton placeholders for this full page load. Category skeletons
+		// are skipped during search, where the category section stays hidden.
+		renderSkeletons(!currentSearch);
+
 		// During search, skip category fetch (search is project-wide).
 		const catPromise = currentSearch ? Promise.resolve([]) : fetchCategories();
 		const imgPromise = fetchImages();
@@ -374,9 +400,27 @@
 				);
 			})
 			.catch(function (err) {
+				// Drop the skeleton placeholders before showing the error so it is
+				// not displayed beneath shimmering tiles.
+				skeletonsActive = false;
+				clearGrids();
 				setLoading(false);
 				showError((err && err.message) || s.loadError || 'Could not load images. Please try again.');
 			});
+	}
+
+	/**
+	 * Empty the category and image grids and hide the category section.
+	 *
+	 * @returns {void}
+	 */
+	function clearGrids() {
+		const catsGrid = modalEl && modalEl.querySelector('.fm-imagemanager-cats-grid');
+		const catsSection = modalEl && modalEl.querySelector('.fm-imagemanager-cats-section');
+		const imgsGrid = modalEl && modalEl.querySelector('.fm-imagemanager-imgs-grid');
+		if (catsGrid) { catsGrid.innerHTML = ''; }
+		if (catsSection) { catsSection.style.display = 'none'; }
+		if (imgsGrid) { imgsGrid.innerHTML = ''; }
 	}
 
 	/**
@@ -501,18 +545,42 @@
 	// ── Category path resolution ────────────────────────────────────────────────
 
 	/**
+	 * Map a raw API path array (root → leaf) onto navStack and re-render breadcrumbs.
+	 *
+	 * Accepts both raw API entries (`id`/`categoryId`, `displayName`/`name`) and the
+	 * already-normalised `{ id, name }` shape produced by the recursive fallback.
+	 *
+	 * @param {Array<Object>} pathArr - Ordered category entries from root to leaf.
+	 * @returns {void}
+	 */
+	function applyCategoryPath(pathArr) {
+		pathArr.forEach(function (entry) {
+			navStack.push({
+				id: entry.id || entry.categoryId,
+				name: entry.displayName || entry.name || ''
+			});
+		});
+		renderBreadcrumbs();
+	}
+
+	/**
 	 * Resolve the category path for a pre-selected image and push it onto navStack.
 	 *
-	 * Fetches the image with its embedded category (`includeCategory=1`), then
-	 * resolves the full ancestor path so the breadcrumbs and grid can reflect the
-	 * correct location. Resolves without modifying navStack for uncategorised images.
+	 * Fetches the image with its embedded category (`includeCategory=true`). The
+	 * embedded category is used to avoid the extra `/categories/{id}` round-trip
+	 * wherever possible:
+	 *   - `category.path` already present  → build the path directly (no 2nd request).
+	 *   - no `path` but no `parentCategory` → the category is top-level, so the path
+	 *                                         is just the category itself (no 2nd request).
+	 *   - `parentCategory` set but no path  → fall back to `resolveCategoryPath`.
+	 * Resolves without modifying navStack for uncategorised images.
 	 *
 	 * @param {string} imageId - The image ID currently stored in the field.
 	 * @returns {Promise<void>}
 	 */
 	function resolveImageCategory(imageId) {
 		return wp.apiFetch({
-			path: buildPath('/images/' + encodeURIComponent(imageId), { includeCategory: 1 })
+			path: buildPath('/images/' + encodeURIComponent(imageId), { includeCategory: true })
 		}).then(function (response) {
 			// The API wraps single-resource responses in a "data" envelope.
 			const image = (response && response.data && typeof response.data === 'object' && !Array.isArray(response.data))
@@ -520,21 +588,36 @@
 				: response;
 
 			const catRaw = image.category;
-			let catId = null;
-			let catName = '';
-			if (catRaw !== null && catRaw !== undefined) {
-				if (typeof catRaw === 'object') {
-					catId = catRaw.id || catRaw.categoryId || null;
-					catName = catRaw.displayName || catRaw.name || '';
-				} else {
-					catId = catRaw; // scalar category ID
-				}
+			if (catRaw === null || catRaw === undefined) {
+				return; // uncategorised image — root is the correct view
 			}
-			catId = catId || image.categoryId || null;
 
+			// Scalar category ID (legacy shape): no embedded data to inspect.
+			if (typeof catRaw !== 'object') {
+				return resolveCategoryPath(catRaw, '');
+			}
+
+			const catId = catRaw.id || catRaw.categoryId || image.categoryId || null;
+			const catName = catRaw.displayName || catRaw.name || '';
 			if (!catId) {
 				return; // uncategorised image — root is the correct view
 			}
+
+			// (a) Full path already embedded in the image response — no extra request.
+			const pathArr = catRaw.path || catRaw.ancestors || null;
+			if (Array.isArray(pathArr) && pathArr.length) {
+				applyCategoryPath(pathArr);
+				return;
+			}
+
+			// (b) Top-level category (no parent) — the path is just the category itself.
+			const parentId = catRaw.parentCategory || catRaw.parentId || null;
+			if (!parentId) {
+				applyCategoryPath([{ id: catId, name: catName }]);
+				return;
+			}
+
+			// (c) Has a parent but no embedded path — resolve it with a single request.
 			return resolveCategoryPath(catId, catName);
 		});
 	}
@@ -542,7 +625,7 @@
 	/**
 	 * Fetch the full ancestor chain for a category and push all entries onto navStack.
 	 *
-	 * Primary: uses `includePath=1` which the API can return as a pre-built path array.
+	 * Primary: uses `includePath=true` which the API can return as a pre-built path array.
 	 * Fallback: recursive parent traversal via `buildAncestorPath` when the API does
 	 * not include a path array in the response.
 	 *
@@ -552,40 +635,29 @@
 	 */
 	function resolveCategoryPath(categoryId, fallbackName) {
 		return wp.apiFetch({
-			path: buildPath('/categories/' + encodeURIComponent(categoryId), { includePath: 1 })
+			path: buildPath('/categories/' + encodeURIComponent(categoryId), { includePath: true })
 		}).then(function (response) {
 			// Unwrap "data" envelope (same API convention as single-image endpoint).
 			const cat = (response && response.data && typeof response.data === 'object' && !Array.isArray(response.data))
 				? response.data
 				: response;
 			const pathArr = cat.path || cat.ancestors || null;
-			let pathPromise;
 
 			if (Array.isArray(pathArr) && pathArr.length) {
 				// API returned a ready-made path from root to this category.
-				pathPromise = Promise.resolve(pathArr.map(function (entry) {
-					return {
-						id: entry.id || entry.categoryId,
-						name: entry.displayName || entry.name || ''
-					};
-				}));
-			} else {
-				// includePath not available — traverse parents recursively.
-				const name = cat.displayName || cat.name || fallbackName || '';
-				const parentId = cat.parentCategory || cat.parentId || null;
-				if (parentId) {
-					pathPromise = buildAncestorPath(parentId, 0).then(function (ancestors) {
-						return ancestors.concat([{ id: categoryId, name: name }]);
-					});
-				} else {
-					pathPromise = Promise.resolve([{ id: categoryId, name: name }]);
-				}
+				applyCategoryPath(pathArr);
+				return;
 			}
 
-			return pathPromise.then(function (path) {
-				path.forEach(function (e) { navStack.push(e); });
-				renderBreadcrumbs();
-			});
+			// includePath not available — traverse parents recursively.
+			const name = cat.displayName || cat.name || fallbackName || '';
+			const parentId = cat.parentCategory || cat.parentId || null;
+			if (parentId) {
+				return buildAncestorPath(parentId, 0).then(function (ancestors) {
+					applyCategoryPath(ancestors.concat([{ id: categoryId, name: name }]));
+				});
+			}
+			applyCategoryPath([{ id: categoryId, name: name }]);
 		});
 	}
 
@@ -741,6 +813,7 @@
 
 		if (replace) {
 			grid.innerHTML = '';
+			skeletonsActive = false; // real tiles now replace the skeleton placeholders
 		}
 
 		const domain = cfg.domain || '';
@@ -898,8 +971,8 @@
 	 * @returns {void}
 	 */
 	function confirmSelection() {
-		if (selectedImage && activeFieldKey) {
-			updateField(activeFieldKey, selectedImage);
+		if (selectedImage && activeFieldEl) {
+			updateField(activeFieldEl, selectedImage);
 		}
 		closeModal();
 	}
@@ -907,20 +980,20 @@
 	/**
 	 * Write a selected image to a specific ACF field instance.
 	 *
-	 * @param {string} fieldKey  - ACF field key.
-	 * @param {Object} imageData - API image object.
+	 * Accepts the field's DOM element directly so that repeater rows with
+	 * identical ACF field keys are always updated correctly.
+	 *
+	 * @param {HTMLElement} fieldEl   - The .fm-imagemanager-field wrapper element.
+	 * @param {Object}      imageData - API image object.
 	 * @returns {void}
 	 */
-	function updateField(fieldKey, imageData) {
+	function updateField(fieldEl, imageData) {
 		const imageId = imageData.newFilename || imageData.imageId || imageData.id || '';
 		const owner = imageData.owner || cfg.projectId || '';
 		const domain = cfg.domain || '';
 		const thumbSrc = 'https://' + domain + '/' + THUMB_FILTERS + '/' + owner + '/' + imageId;
 		const label = imageData.customTitle || imageData.orgFilename || imageId;
 
-		const fieldEl = document.querySelector(
-			'.fm-imagemanager-field[data-field-key="' + CSS.escape(fieldKey) + '"]'
-		);
 		if (!fieldEl) {
 			return;
 		}
@@ -979,6 +1052,77 @@
 	// ── UI helpers ──────────────────────────────────────────────────────────────
 
 	/**
+	 * Fill the category and image grids with skeleton placeholder tiles while a
+	 * full page of data is loading.
+	 *
+	 * The skeleton tiles are inserted as direct children of the same grids that
+	 * hold the real tiles (.fm-imagemanager-cats-grid / .fm-imagemanager-imgs-grid),
+	 * so they inherit the identical responsive column layout — the category
+	 * skeletons render exactly like real categories. renderCategories() and
+	 * renderImages() overwrite this placeholder markup once the data arrives.
+	 *
+	 * Skeletons are the visible loading indicator, so the overlay spinner and the
+	 * grid dim are suppressed while they are shown (the spinner is reserved for the
+	 * "Load more" append, which keeps existing tiles in place).
+	 *
+	 * @param {boolean} showCats - Whether to render category skeletons (false during search).
+	 * @returns {void}
+	 */
+	function renderSkeletons(showCats) {
+		if (!modalEl) {
+			return;
+		}
+
+		const catsGrid = modalEl.querySelector('.fm-imagemanager-cats-grid');
+		const catsSection = modalEl.querySelector('.fm-imagemanager-cats-section');
+		if (catsGrid && catsSection) {
+			if (showCats) {
+				let catHtml = '';
+				for (let i = 0; i < SKELETON_CAT_COUNT; i++) {
+					// Vary the label width slightly so the row does not look uniform.
+					const labelWidth = 50 + (i % 3) * 15;
+					catHtml +=
+						'<div class="fm-imagemanager-skeleton-cat" aria-hidden="true">' +
+						'<span class="fm-imagemanager-skeleton-bar fm-imagemanager-skeleton-cat-icon"></span>' +
+						'<span class="fm-imagemanager-skeleton-bar fm-imagemanager-skeleton-cat-label" style="width:' + labelWidth + '%;"></span>' +
+						'</div>';
+				}
+				catsGrid.innerHTML = catHtml;
+				catsSection.style.display = '';
+			} else {
+				catsGrid.innerHTML = '';
+				catsSection.style.display = 'none';
+			}
+		}
+
+		const imgsGrid = modalEl.querySelector('.fm-imagemanager-imgs-grid');
+		if (imgsGrid) {
+			let imgHtml = '';
+			for (let i = 0; i < SKELETON_IMG_COUNT; i++) {
+				imgHtml +=
+					'<div class="fm-imagemanager-skeleton-img" aria-hidden="true">' +
+					'<span class="fm-imagemanager-skeleton-bar fm-imagemanager-skeleton-img-thumb"></span>' +
+					'<div class="fm-imagemanager-skeleton-img-meta">' +
+					'<span class="fm-imagemanager-skeleton-bar fm-imagemanager-skeleton-img-name"></span>' +
+					'<span class="fm-imagemanager-skeleton-bar fm-imagemanager-skeleton-img-subline"></span>' +
+					'</div>' +
+					'</div>';
+			}
+			imgsGrid.innerHTML = imgHtml;
+			// Don't dim the shimmering skeletons — the dim is only for "Load more".
+			imgsGrid.classList.remove('is-loading');
+		}
+
+		// Mark skeletons active so setLoading() keeps the overlay spinner hidden
+		// while they are visible (e.g. during the resolveImageCategory round-trip).
+		skeletonsActive = true;
+		const spinner = modalEl.querySelector('.fm-imagemanager-spinner');
+		if (spinner) {
+			spinner.style.display = 'none';
+		}
+	}
+
+	/**
 	 * Show or hide the loading spinner and announce the state via the live region.
 	 *
 	 * The visual spinner uses display:none and has no aria-live attribute.
@@ -990,13 +1134,16 @@
 	 */
 	function setLoading(show) {
 		isLoading = show;
+		// While skeleton placeholders are visible they are the loading indicator,
+		// so the overlay spinner and grid dim stay suppressed.
+		const showSpinner = show && !skeletonsActive;
 		const spinner = modalEl && modalEl.querySelector('.fm-imagemanager-spinner');
 		if (spinner) {
-			spinner.style.display = show ? '' : 'none';
+			spinner.style.display = showSpinner ? '' : 'none';
 		}
 		const grid = modalEl && modalEl.querySelector('.fm-imagemanager-imgs-grid');
 		if (grid) {
-			grid.classList.toggle('is-loading', show);
+			grid.classList.toggle('is-loading', showSpinner);
 		}
 		const live = document.getElementById('fm-imagemanager-live');
 		if (live) {
@@ -1046,6 +1193,29 @@
 	}
 
 	// ── Utilities ───────────────────────────────────────────────────────────────
+
+	/**
+	 * Reduce a stored field value to a bare image ID usable in the REST route.
+	 *
+	 * Newly saved values are already bare image IDs, but legacy values may still be
+	 * stored as relative URLs (e.g. "/rsm/<file>.jpg", optionally with filter-prefix
+	 * segments). Passed straight into the path, encodeURIComponent turns the slashes
+	 * into "%2F", which the `/images/(?P<imageId>[\w.\-]+)` route does not match → 404.
+	 * This mirrors the server-side `feichtmedia_imagemanager_parse_value()` parser:
+	 * the image ID is the last path segment (the filename). Normalising here also lets
+	 * the grid highlight match a pre-selected legacy value against the API's bare IDs.
+	 *
+	 * @param {string} value - Raw value read from the field input.
+	 * @returns {string} Bare image ID (filename), or '' for empty input.
+	 */
+	function normalizeImageId(value) {
+		const str = String(value == null ? '' : value).trim();
+		if (str === '' || str.indexOf('/') === -1) {
+			return str;
+		}
+		const segments = str.split('/').filter(Boolean);
+		return segments.length ? segments[segments.length - 1] : str;
+	}
 
 	/**
 	 * Build a WP REST API path with query parameters.

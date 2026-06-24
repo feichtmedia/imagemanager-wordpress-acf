@@ -43,7 +43,8 @@ feichtmedia-imagemanager-acf/
 │   ├── class-graphql.php                    ← WPGraphQL resolvers (String + ImageManagerImage)
 │   ├── class-rest-proxy.php                 ← WP REST proxy to ImageManager API
 │   └── helpers.php                          ← stateless: URL builder, value parser, mapper, metadata fetch
-├── assets/
+├── assets/                                  ← subfolders for asset types (JS, CSS, images); holds assets for SVN deploy directly (not in subfolders)
+│   ├── images/                              ← static assets (icons, logos, placeholders)
 │   ├── js/acf-imagemanager-field.js         ← file browser modal, field UI, REST calls
 │   └── css/acf-imagemanager-field.css       ← field + modal styling (WP 7 admin)
 └── languages/                               ← .pot + .po/.mo per locale (no .json, no JS i18n pipeline)
@@ -72,13 +73,13 @@ plugins_loaded priority 10 → this plugin initialises:
 
 ## Constants (defined in main plugin file)
 
-| Constant                        | Value                                               | Configurable?   |
-| ------------------------------- | --------------------------------------------------- | --------------- |
-| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.1.0'`                                           | bump on release |
-| `FM_IMAGEMANAGER_ACF_PATH`      | `plugin_dir_path(__FILE__)`                         | no              |
-| `FM_IMAGEMANAGER_ACF_URL`       | `plugin_dir_url(__FILE__)`                          | no              |
-| `FM_IMAGEMANAGER_API_URL`       | `'https://imagemanager.feicht-media.de/api/v2'`     | no              |
-| `FM_IMAGEMANAGER_DASHBOARD_URL` | `'https://imagemanager.feicht-media.de'`            | no              |
+| Constant                        | Value                                           | Configurable?   |
+| ------------------------------- | ----------------------------------------------- | --------------- |
+| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.2.0'`                                       | bump on release |
+| `FM_IMAGEMANAGER_ACF_PATH`      | `plugin_dir_path(__FILE__)`                     | no              |
+| `FM_IMAGEMANAGER_ACF_URL`       | `plugin_dir_url(__FILE__)`                      | no              |
+| `FM_IMAGEMANAGER_API_URL`       | `'https://imagemanager.feicht-media.de/api/v2'` | no              |
+| `FM_IMAGEMANAGER_DASHBOARD_URL` | `'https://imagemanager.feicht-media.de'`        | no              |
 
 ---
 
@@ -99,9 +100,9 @@ All are registered, rendered, and sanitised by `FM_ImageManager_Core`. This plug
 
 ## Plugin-specific options (owned by this plugin)
 
-| Option key                                   | Description                                                        |
-| -------------------------------------------- | ------------------------------------------------------------------ |
-| `feichtmedia_imagemanager_acf_cache_enabled` | Whether Transient caching is active for metadata (default: `1`)    |
+| Option key                                   | Description                                                           |
+| -------------------------------------------- | --------------------------------------------------------------------- |
+| `feichtmedia_imagemanager_acf_cache_enabled` | Whether Transient caching is active for metadata (default: `1`)       |
 | `feichtmedia_imagemanager_acf_cache_ttl`     | Metadata cache lifetime in seconds (default: `3600`, `0` = no expiry) |
 
 Both are registered and rendered by `FM_ImageManager_Settings` (the "ACF Field" section on the shared options page) and deleted in `uninstall.php`.
@@ -149,13 +150,12 @@ function feichtmedia_imagemanager_parse_value( string $value ): array { … }
 
 ```javascript
 /**
- * Open the file browser modal for a specific ACF field instance.
- * Sets the activeFieldKey so the confirmed selection goes to the right field.
+ * Open the file browser modal for the field stored in activeFieldEl.
+ * Must be called after activeFieldEl has been set by the click handler.
  *
- * @param {string} fieldKey - ACF field key of the triggering field instance.
  * @returns {void}
  */
-function openBrowser( fieldKey ) { … }
+function openBrowser() { … }
 ```
 
 ---
@@ -199,7 +199,9 @@ This project has **two independent version numbers**:
 
 ### Notes on changes
 
-After each change, the `CHANGELOG.md` file must be updated with a new entry describing the change. If no changelog file exisits, create one based on the described structure above.
+After each change, the `CHANGELOG.md` file must be updated with a new entry describing the change. If no changelog file exists, create one based on the described structure above.
+
+For public documentation, a more simple and user-friendly changelog entry is also added to the `readme.txt` file under the "Changelog" section. Use the same version header (number and date) as in the `CHANGELOG.md`. The description in the `readme.txt` should be concise and focused on the user-facing impact of the change, while the `CHANGELOG.md` can include more technical details.
 
 Also, the `AGENTS.md` file must be reviewed and updated if necessary to reflect the change and ensure that AI coding agents have the most up-to-date information about the codebase. This is crucial for maintaining the productivity of AI coding agents and ensuring they can effectively assist with development tasks.
 
@@ -240,6 +242,7 @@ Fallback for any other locale: en_US (automatic via gettext — no code needed).
 - `update_value()` strips any path prefix before saving — only the bare image ID is ever written to `post_meta`.
 - ACF Conditional Logic: registers `imagemanagerHasValue` (`!=empty`) and `imagemanagerHasNoValue` (`==empty`) condition types in JS. Only "has a value / has no value" operators are supported (the stored value is an opaque image ID, not a user-comparable string).
 - Assets enqueued only on ACF admin screens via `input_admin_enqueue_scripts()`. UI strings are translated in PHP and passed once via `wp_localize_script` as `window.fmImageManager.strings`.
+- **Button interactions use global event delegation** on `document` (not per-field binding via ACF's `ready_field` event). This is required because ACF's `ready_field` lifecycle event does not fire reliably in the ACF 6.8+ Expanded Editor or in the iFrame-based block editor (WordPress 7+). `initField()` is registered as an ACF hook callback but is intentionally a no-op; do not add per-field bindings there.
 
 **Stored value:** the image ID (`newFilename`) only — never the full URL.
 
@@ -274,7 +277,7 @@ Query params for each route are defined in `FM_ImageManager_REST_Proxy::PARAM_WH
 
 Behaviour:
 
-- Opens on "Add image" / "Change image" button click; sets `activeFieldKey` and saves `triggerEl` (the clicked button) so focus is restored on close. If the field already has a value, the currently stored image is pre-selected (`preSelectedImageId`) when the browser opens.
+- Opens on "Add image" / "Change image" button click; sets `activeFieldEl` (direct DOM reference to the clicked field element — avoids `querySelector` by key which would always match the first repeater row) and `triggerEl` (the clicked button, so focus is restored on close). If the field already has a value, the currently stored image is pre-selected (`preSelectedImageId`) when the browser opens.
 - Modal receives focus on open (search input). Tab is trapped within the dialog. Escape closes and returns focus to `triggerEl` (WCAG 2.1.2 / 2.4.3).
 - Top section: category tiles (folder cards). Bottom section: image grid for the current category.
 - Root level shows sub-categories and **uncategorised images**.
@@ -289,11 +292,25 @@ Behaviour:
 
 ```html
 <div class="fm-imagemanager-img-tile" data-image-id="…">
-  <button class="fm-imagemanager-img-select" aria-pressed="true|false" aria-label="…">
-    <div class="fm-imagemanager-img-thumb"><img alt="" …><div aria-hidden="true">…</div></div>
+  <button
+    class="fm-imagemanager-img-select"
+    aria-pressed="true|false"
+    aria-label="…"
+  >
+    <div class="fm-imagemanager-img-thumb">
+      <img alt="" … />
+      <div aria-hidden="true">…</div>
+    </div>
     <div class="fm-imagemanager-img-meta">…</div>
   </button>
-  <a class="fm-imagemanager-img-info" href="…" target="_blank" rel="noopener" aria-label="… (opens in new window)"><!-- dashicon --></a>
+  <a
+    class="fm-imagemanager-img-info"
+    href="…"
+    target="_blank"
+    rel="noopener"
+    aria-label="… (opens in new window)"
+    ><!-- dashicon --></a
+  >
 </div>
 ```
 

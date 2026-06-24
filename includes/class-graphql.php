@@ -115,8 +115,19 @@ class FM_ImageManager_GraphQL {
 				'resolve' => function ($root, array $_args, $_context, $_info, $_field_type, \WPGraphQL\Acf\FieldConfig $field_config) {
 					$acf_field     = $field_config->get_acf_field();
 					$return_format = $acf_field['return_format'] ?? 'relative_url';
+					$field_name    = $acf_field['name'];
 					$source_id     = is_array($root) ? ($root['databaseId'] ?? null) : ($root->databaseId ?? null);
-					$value         = get_field($acf_field['name'], $source_id);
+
+					// When source_id is null and the field name exists as a key in $root,
+					// we are inside a repeater row. WPGraphQL for ACF v2.x fetches repeater
+					// rows via get_field() on the parent, so format_value() has already run
+					// on every sub-field; calling get_field() again with a null ID would
+					// query the global post context and miss the repeater sub-field entirely.
+					if (is_null($source_id) && is_array($root) && array_key_exists($field_name, $root)) {
+						$value = $root[$field_name];
+					} else {
+						$value = get_field($field_name, $source_id);
+					}
 
 					if ($return_format === 'metadata') {
 						if (empty($value) || ! is_array($value)) {

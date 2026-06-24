@@ -3,7 +3,7 @@
 /**
  * Plugin Name: FeichtMedia ImageManager for Advanced Custom Fields
  * Description: ACF custom field type for the FeichtMedia ImageManager DAM. Editors pick images through a native WP-admin file browser; all API requests are proxied server-side so the API key never reaches the browser.
- * Version:     1.1.0
+ * Version:     1.2.0
  * Author:      FeichtMedia
  * Author URI:  https://www.feicht-media.de/
  * Text Domain: feichtmedia-imagemanager-acf
@@ -18,7 +18,7 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
-define('FM_IMAGEMANAGER_ACF_VERSION', '1.1.0');
+define('FM_IMAGEMANAGER_ACF_VERSION', '1.2.0');
 define('FM_IMAGEMANAGER_ACF_PATH', plugin_dir_path(__FILE__));
 define('FM_IMAGEMANAGER_ACF_URL', plugin_dir_url(__FILE__));
 define('FM_IMAGEMANAGER_API_URL', 'https://imagemanager.feicht-media.de/api/v2');

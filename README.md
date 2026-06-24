@@ -11,41 +11,42 @@ Internal reference for developers. For the full specification and AI-agent conte
 3. The REST proxy and file-browser modal activate automatically once an API key is saved.
 
 Optional integrations activate automatically when present:
+
 - **WPGraphQL + WPGraphQL for ACF v2.x** – the GraphQL field type registers itself when `register_graphql_acf_field_type()` is available.
 
 ---
 
 ## File overview
 
-| File / Directory | Purpose |
-|---|---|
-| `feichtmedia-imagemanager-acf.php` | Bootstrap, constants, activation hook |
-| `uninstall.php` | Reference-counted cleanup |
-| `includes/shared/imagemanager-core/bootstrap.php` | Version-negotiated boot (highest bundled version wins) |
-| `includes/shared/imagemanager-core/class-imagemanager-core.php` | Shared options page, option registration, consumer registry |
-| `includes/class-settings.php` | Plugin-specific settings section on shared options page |
-| `includes/class-rest-proxy.php` | WP REST proxy to ImageManager API |
-| `includes/class-acf-field-image.php` | ACF field type `imagemanager_image` |
-| `includes/class-graphql.php` | WPGraphQL for ACF v2.x integration (optional) |
-| `includes/helpers.php` | Value parser, URL builder, API mapper, metadata fetch (Transient-cached) |
-| `assets/js/acf-imagemanager-field.js` | File-browser modal and field UI |
-| `assets/css/acf-imagemanager-field.css` | Field and modal styles (WP 7 admin) |
-| `languages/` | `.pot` + `.po`/`.mo` per locale (`de_DE`, `de_DE_formal`, `de_AT`, `de_CH`, `en_GB`) |
-| `package.json` | npm script: `compile-languages` → `wp i18n make-mo` |
-| `.distignore` | Excludes for WordPress.org SVN deployment |
-| `.github/workflows/release.yml` | Automated release pipeline |
+| File / Directory                                                | Purpose                                                                              |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `feichtmedia-imagemanager-acf.php`                              | Bootstrap, constants, activation hook                                                |
+| `uninstall.php`                                                 | Reference-counted cleanup                                                            |
+| `includes/shared/imagemanager-core/bootstrap.php`               | Version-negotiated boot (highest bundled version wins)                               |
+| `includes/shared/imagemanager-core/class-imagemanager-core.php` | Shared options page, option registration, consumer registry                          |
+| `includes/class-settings.php`                                   | Plugin-specific settings section on shared options page                              |
+| `includes/class-rest-proxy.php`                                 | WP REST proxy to ImageManager API                                                    |
+| `includes/class-acf-field-image.php`                            | ACF field type `imagemanager_image`                                                  |
+| `includes/class-graphql.php`                                    | WPGraphQL for ACF v2.x integration (optional)                                        |
+| `includes/helpers.php`                                          | Value parser, URL builder, API mapper, metadata fetch (Transient-cached)             |
+| `assets/js/acf-imagemanager-field.js`                           | File-browser modal and field UI                                                      |
+| `assets/css/acf-imagemanager-field.css`                         | Field and modal styles (WP 7 admin)                                                  |
+| `languages/`                                                    | `.pot` + `.po`/`.mo` per locale (`de_DE`, `de_DE_formal`, `de_AT`, `de_CH`, `en_GB`) |
+| `package.json`                                                  | npm script: `compile-languages` → `wp i18n make-mo`                                  |
+| `.distignore`                                                   | Excludes for WordPress.org SVN deployment                                            |
+| `.github/workflows/release.yml`                                 | Automated release pipeline                                                           |
 
 ---
 
 ## Constants
 
-| Constant | Value |
-|---|---|
-| `FM_IMAGEMANAGER_ACF_VERSION` | `'1.1.0'` (bump on every release) |
-| `FM_IMAGEMANAGER_ACF_PATH` | `plugin_dir_path(__FILE__)` |
-| `FM_IMAGEMANAGER_ACF_URL` | `plugin_dir_url(__FILE__)` |
-| `FM_IMAGEMANAGER_API_URL` | `'https://imagemanager.feicht-media.de/api/v2'` |
-| `FM_IMAGEMANAGER_DASHBOARD_URL` | `'https://imagemanager.feicht-media.de'` |
+| Constant                        | Value                                           |
+| ------------------------------- | ----------------------------------------------- |
+| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.2.0'` (bump on every release)               |
+| `FM_IMAGEMANAGER_ACF_PATH`      | `plugin_dir_path(__FILE__)`                     |
+| `FM_IMAGEMANAGER_ACF_URL`       | `plugin_dir_url(__FILE__)`                      |
+| `FM_IMAGEMANAGER_API_URL`       | `'https://imagemanager.feicht-media.de/api/v2'` |
+| `FM_IMAGEMANAGER_DASHBOARD_URL` | `'https://imagemanager.feicht-media.de'`        |
 
 ---
 
@@ -69,11 +70,11 @@ plugins_loaded priority 10 → this plugin initialises:
 Namespace: `feichtmedia/imagemanager/v2`  
 All routes are GET-only and require `edit_posts` capability.
 
-| WP REST route | Upstream |
-|---|---|
-| `/images` | `/api/v2/images` |
-| `/images/{imageId}` | `/api/v2/images/{imageId}` |
-| `/categories` | `/api/v2/categories` |
+| WP REST route              | Upstream                          |
+| -------------------------- | --------------------------------- |
+| `/images`                  | `/api/v2/images`                  |
+| `/images/{imageId}`        | `/api/v2/images/{imageId}`        |
+| `/categories`              | `/api/v2/categories`              |
 | `/categories/{categoryId}` | `/api/v2/categories/{categoryId}` |
 
 The API key is injected server-side from `wp_options` and never sent to the browser.  
@@ -85,9 +86,20 @@ Only whitelisted query params are forwarded upstream (see `FM_ImageManager_REST_
 
 - **Type key:** `imagemanager_image`
 - **Class:** `FM_ImageManager_ACF_Field_Image` (`includes/class-acf-field-image.php`)
-- **Field settings:** `return_format` (`relative_url` | `absolute_url` | `metadata`), `required`, `allow_null`
+- **Field settings:** `return_format` (`relative_url` | `absolute_url` | `metadata`), `required` (built-in), `allow_null` (rendered on the **Validation** tab via `render_field_validation_settings()`)
 - **Stored value:** image ID (`newFilename`) only — never a full URL
 - **Backward compat:** values containing `/` are legacy relative URLs; the regex extracts the last two path segments as `groupId`/`imageId`, handling filter-prefix variants too
+
+### Why keep `allow_null` next to `required`?
+
+At first glance `allow_null` looks redundant with `required` — a required field cannot be empty, so "allow empty" seems to just be the inverse of "required". They are **not** the inverse, though, and we deliberately keep both:
+
+- `required` governs whether a value **must** be set to save the post.
+- `allow_null` governs whether an **already-selected** image may be **removed** again (it controls the "Remove" button).
+
+The case that needs both is a **non-required field whose value, once chosen, must not be cleared again** (for whatever editorial reason). That is `required = false` + `allow_null = false` — impossible to express with `required` alone.
+
+To prevent the two from contradicting each other, **`required` always wins**: a required field never shows the "Remove" button regardless of `allow_null` (see the `empty($field['required']) && ! empty($field['allow_null'])` guard in `render_field()`). `allow_null` therefore only has an effect on non-required fields.
 
 ---
 
@@ -95,11 +107,11 @@ Only whitelisted query params are forwarded upstream (see `FM_ImageManager_REST_
 
 Requires **WPGraphQL for ACF v2.x** (`wpgraphql-acf`). The v0.x legacy API is not used.
 
-| return_format | GraphQL type |
-|---|---|
-| `relative_url` | `String` |
-| `absolute_url` | `String` |
-| `metadata` | `ImageManagerImage` (custom object type) |
+| return_format  | GraphQL type                             |
+| -------------- | ---------------------------------------- |
+| `relative_url` | `String`                                 |
+| `absolute_url` | `String`                                 |
+| `metadata`     | `ImageManagerImage` (custom object type) |
 
 `ImageManagerImage` fields: `imageId`, `relativeUrl`, `absoluteUrl`, `orgFilename`, `title`, `alt`, `copyright`, `width`, `height`, `filetype`, `filesize`.
 
@@ -123,12 +135,12 @@ Releases are fully automated via `.github/workflows/release.yml`. No manual step
 
 Update all four version locations to the new version number before tagging:
 
-| Location | Field |
-|---|---|
-| `feichtmedia-imagemanager-acf.php` | `Version:` plugin header |
-| `feichtmedia-imagemanager-acf.php` | `FM_IMAGEMANAGER_ACF_VERSION` constant |
-| `readme.txt` | `Stable tag:` |
-| `CHANGELOG.md` | Add `## [X.Y.Z] – YYYY-MM-DD` section with release notes |
+| Location                           | Field                                                    |
+| ---------------------------------- | -------------------------------------------------------- |
+| `feichtmedia-imagemanager-acf.php` | `Version:` plugin header                                 |
+| `feichtmedia-imagemanager-acf.php` | `FM_IMAGEMANAGER_ACF_VERSION` constant                   |
+| `readme.txt`                       | `Stable tag:`                                            |
+| `CHANGELOG.md`                     | Add `## [X.Y.Z] – YYYY-MM-DD` section with release notes |
 
 The workflow verifies the first three automatically and aborts if they don't match the tag. The `CHANGELOG.md` section is used as the GitHub release description.
 
@@ -152,9 +164,9 @@ Steps 5 and 6 only fire on tag pushes; `workflow_dispatch` skips them.
 
 **Required GitHub Secrets** (Settings → Secrets and variables → Actions):
 
-| Secret | Value |
-|---|---|
-| `SVN_USERNAME` | Your wordpress.org username |
+| Secret         | Value                                                 |
+| -------------- | ----------------------------------------------------- |
+| `SVN_USERNAME` | Your wordpress.org username                           |
 | `SVN_PASSWORD` | Your wordpress.org password (or application password) |
 
 ---

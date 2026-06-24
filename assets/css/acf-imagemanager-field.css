@@ -237,6 +237,7 @@ dialog.fm-imagemanager-modal::backdrop {
   overflow-y: auto;
   padding: 16px 20px;
   position: relative;
+  container-type: inline-size; /* for responsive layout of the image grid */
 }
 
 /* ── Modal: categories section ──────────────────────────────────────────── */
@@ -246,9 +247,24 @@ dialog.fm-imagemanager-modal::backdrop {
 }
 
 .fm-imagemanager-cats-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+}
+@media (max-width: 750px) {
+  .fm-imagemanager-cats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .fm-imagemanager-cats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 400px) {
+  .fm-imagemanager-cats-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .fm-imagemanager-cat-tile {
@@ -284,6 +300,14 @@ dialog.fm-imagemanager-modal::backdrop {
   display: inline-block;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.fm-imagemanager-cat-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
 }
 
 /* ── Modal: image grid ──────────────────────────────────────────────────── */
@@ -513,7 +537,7 @@ dialog.fm-imagemanager-modal::backdrop {
   padding: 8px 14px;
   background: #f6f7f7;
   border: 1px solid #dcdcde;
-  border-radius: 2px;
+  border-radius: 4px; /* match .fm-imagemanager-cat-tile so skeletons render like real categories */
   pointer-events: none;
 }
 

@@ -107,6 +107,10 @@ msgstr ""
 msgid "Allow Null"
 msgstr ""
 
+#: includes/class-acf-field-image.php
+msgid "Allow the selected image to be removed. Ignored when the field is required."
+msgstr ""
+
 #. translators: %s: URL to the plugin settings page
 #: includes/class-acf-field-image.php
 msgid "&#9888; Configuration incomplete. Please complete all settings under <a href=\"%s\">Settings &#8594; FeichtMedia ImageManager</a>."

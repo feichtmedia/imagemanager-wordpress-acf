@@ -52,14 +52,30 @@ class FM_ImageManager_ACF_Field_Image extends acf_field {
 				],
 			]
 		);
+	}
 
+	/**
+	 * Render the field-group editor settings shown on the "Validation" tab.
+	 *
+	 * "Allow Null" lives here alongside ACF's built-in "Required" setting,
+	 * since both govern whether the field may be left empty. The two never
+	 * conflict at runtime: "Required" always wins — a required field can never
+	 * expose the "Remove" button regardless of this setting (see render_field()).
+	 * "Allow Null" therefore only matters for non-required fields, where it
+	 * decides whether an already-chosen image may be cleared again.
+	 *
+	 * @param array $field Field configuration array.
+	 * @return void
+	 */
+	public function render_field_validation_settings($field): void {
 		acf_render_field_setting(
 			$field,
 			[
-				'label' => __('Allow Null', 'feichtmedia-imagemanager-acf'),
-				'name'  => 'allow_null',
-				'type'  => 'true_false',
-				'ui'    => 1,
+				'label'        => __('Allow Null', 'feichtmedia-imagemanager-acf'),
+				'instructions' => __('Allow the selected image to be removed. Ignored when the field is required.', 'feichtmedia-imagemanager-acf'),
+				'name'         => 'allow_null',
+				'type'         => 'true_false',
+				'ui'           => 1,
 			]
 		);
 	}
@@ -128,8 +144,8 @@ class FM_ImageManager_ACF_Field_Image extends acf_field {
 			<div class="fm-imagemanager-preview-state" <?php echo ! $has_image ? ' style="display:none;"' : ''; ?>>
 				<div class="fm-imagemanager-preview">
 					<img
-						src="<?php echo esc_url( $img_src ); ?>"
-						alt="<?php echo esc_attr( $img_alt ); ?>"
+						src="<?php echo esc_url($img_src); ?>"
+						alt="<?php echo esc_attr($img_alt); ?>"
 						data-fm-imagemanager-preview />
 					<div class="fm-imagemanager-img-error" style="display:none;">
 						<?php esc_html_e('Image not found.', 'feichtmedia-imagemanager-acf'); ?>
@@ -139,7 +155,7 @@ class FM_ImageManager_ACF_Field_Image extends acf_field {
 					<button type="button" class="button fm-imagemanager-btn-change">
 						<?php esc_html_e('Change image', 'feichtmedia-imagemanager-acf'); ?>
 					</button>
-					<?php if (! empty($field['allow_null'])) : ?>
+					<?php if (empty($field['required']) && ! empty($field['allow_null'])) : ?>
 						<button type="button" class="button fm-imagemanager-btn-remove">
 							<?php esc_html_e('Remove', 'feichtmedia-imagemanager-acf'); ?>
 						</button>

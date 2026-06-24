@@ -85,6 +85,9 @@ msgstr "Metadaten-Objekt"
 msgid "Allow Null"
 msgstr "Leer erlauben"
 
+msgid "Allow the selected image to be removed. Ignored when the field is required."
+msgstr "Erlaubt das gewählte Bild zu entfernen. Einstellung wird ignoriert, wenn das Feld erforderlich ist."
+
 msgid "&#9888; Configuration incomplete. Please complete all settings under <a href=\"%s\">Settings &#8594; FeichtMedia ImageManager</a>."
 msgstr "&#9888; Konfiguration unvollständig. Bitte vervollständigen Sie alle Einstellungen unter <a href=\"%s\">Einstellungen &#8594; FeichtMedia ImageManager</a>."
 
