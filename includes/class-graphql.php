@@ -5,8 +5,10 @@
  *
  * Registers the imagemanager_image field type with WPGraphQL for ACF v2.x.
  * Loaded only when WPGraphQL for ACF is active (function_exists check in the
- * main plugin file). The resolver calls get_field() which runs format_value(),
- * so no extra API calls are made at the GraphQL layer.
+ * main plugin file). The resolver reads pre-resolved values from $root when a
+ * parent field (repeater, group, flexible content) has already fetched them,
+ * and otherwise calls get_field() which runs format_value() — no extra API
+ * calls are made at the GraphQL layer either way.
  *
  * Return types:
  *   - return_format relative_url | absolute_url → String
@@ -97,7 +99,8 @@ class FM_ImageManager_GraphQL {
 	 * Uses the register_graphql_acf_field_type() API introduced in v2.0. The
 	 * graphql_type callable inspects return_format at schema-build time to choose
 	 * between String and ImageManagerImage. The resolve callable delegates to
-	 * get_field() so format_value() runs and no additional API calls are needed.
+	 * resolve_field_value(), which always ends up running format_value() exactly
+	 * once, so no additional API calls are needed.
 	 *
 	 * @return void
 	 */
@@ -115,19 +118,8 @@ class FM_ImageManager_GraphQL {
 				'resolve' => function ($root, array $_args, $_context, $_info, $_field_type, \WPGraphQL\Acf\FieldConfig $field_config) {
 					$acf_field     = $field_config->get_acf_field();
 					$return_format = $acf_field['return_format'] ?? 'relative_url';
-					$field_name    = $acf_field['name'];
-					$source_id     = is_array($root) ? ($root['databaseId'] ?? null) : ($root->databaseId ?? null);
 
-					// When source_id is null and the field name exists as a key in $root,
-					// we are inside a repeater row. WPGraphQL for ACF v2.x fetches repeater
-					// rows via get_field() on the parent, so format_value() has already run
-					// on every sub-field; calling get_field() again with a null ID would
-					// query the global post context and miss the repeater sub-field entirely.
-					if (is_null($source_id) && is_array($root) && array_key_exists($field_name, $root)) {
-						$value = $root[$field_name];
-					} else {
-						$value = get_field($field_name, $source_id);
-					}
+					$value = $this->resolve_field_value($root, $acf_field);
 
 					if ($return_format === 'metadata') {
 						if (empty($value) || ! is_array($value)) {
@@ -153,5 +145,102 @@ class FM_ImageManager_GraphQL {
 				},
 			]
 		);
+	}
+
+	/**
+	 * Resolve the formatted field value from the GraphQL $root.
+	 *
+	 * WPGraphQL for ACF v2.x passes a different $root shape depending on where
+	 * the field lives:
+	 *
+	 *   - Top level of a field group: ['node' => <Model>, 'acf_field_group' => …].
+	 *     The value is not in $root — fetch it via get_field() with the node's
+	 *     ACF ID (posts, terms, users, options pages).
+	 *   - Repeater row / flexible content layout: the parent resolver fetched
+	 *     the rows via get_field() WITH formatting, so $root holds the already
+	 *     formatted value keyed by the sub-field NAME.
+	 *   - ACF group: the group resolver fetches the group value WITHOUT
+	 *     formatting; ACF's group load_value() keys sub-values by field KEY, so
+	 *     $root holds the raw stored value (bare image ID) — format_value()
+	 *     must still be applied via acf_format_value().
+	 *   - ACF block: ['node' => <parsed block array>, …]. The values live in
+	 *     the block comment's attrs in post_content, not in post meta — the
+	 *     block data must be registered as meta before get_field() can see it.
+	 *
+	 * @param mixed        $root      The GraphQL root passed to the resolver.
+	 * @param array<mixed> $acf_field The ACF field configuration.
+	 * @return mixed Formatted value (string or metadata array), or null.
+	 */
+	protected function resolve_field_value($root, array $acf_field) {
+		if (is_array($root)) {
+			// Formatted value passed down by a repeater row or flexible content
+			// layout, keyed by field name. The is_object guard protects against
+			// a field unluckily named 'node' colliding with the top-level root.
+			$field_name = $acf_field['name'];
+			if (array_key_exists($field_name, $root) && ! is_object($root[$field_name])) {
+				return $root[$field_name];
+			}
+
+			// Raw value passed down by a group resolver, keyed by field key
+			// ('__key' for cloned fields). A string here is the raw stored
+			// value; an array is a metadata value that is already formatted.
+			foreach ([$acf_field['key'] ?? null, $acf_field['__key'] ?? null] as $key) {
+				if (null !== $key && isset($root[$key]) && '' !== $root[$key]) {
+					return is_array($root[$key])
+						? $root[$key]
+						: acf_format_value($root[$key], 0, $acf_field);
+				}
+			}
+		}
+
+		$node = is_array($root) ? ($root['node'] ?? null) : null;
+
+		// ACF block: the values live in the block comment's attrs inside
+		// post_content, not in post meta — get_field() against the post would
+		// find nothing. Mirror WPGraphQL for ACF's own block handling: register
+		// the block data as meta under the block ID, then resolve via
+		// get_field() so format_value() runs (function_exists guard: ACF
+		// blocks are PRO-only).
+		if (
+			is_array($node)
+			&& isset($node['blockName'], $node['attrs'])
+			&& function_exists('acf_prepare_block')
+		) {
+			$block = $node['attrs'];
+			if (! isset($block['id'])) {
+				$block['id'] = uniqid('block_', true);
+			}
+
+			$block    = acf_prepare_block($block);
+			$block_id = acf_ensure_block_id_prefix(acf_get_block_id($node['attrs']));
+
+			acf_setup_meta($block['data'] ?? [], $block_id, true);
+			$value = get_field($acf_field['name'], $block_id);
+			acf_reset_meta($block_id);
+
+			// Fallback for attrs that acf_setup_meta() could not expose
+			// (e.g. an unregistered block type): read the raw value straight
+			// from the block data and format it ourselves.
+			if (empty($value) && isset($node['attrs']['data'][$acf_field['name']]) && '' !== $node['attrs']['data'][$acf_field['name']]) {
+				$value = acf_format_value($node['attrs']['data'][$acf_field['name']], 0, $acf_field);
+			}
+
+			return $value ?: null;
+		}
+
+		// Top level: resolve against the node the field group is attached to.
+		// get_node_acf_id() returns the ACF-style ID ('term_x', 'user_x', …),
+		// so non-post locations resolve correctly too.
+		$source_id = null;
+
+		if (null !== $node) {
+			$source_id = \WPGraphQL\Acf\Utils::get_node_acf_id($node);
+		} elseif (is_array($root) && isset($root['databaseId'])) {
+			$source_id = $root['databaseId'];
+		} elseif (is_object($root) && isset($root->databaseId)) {
+			$source_id = $root->databaseId;
+		}
+
+		return get_field($acf_field['name'], $source_id);
 	}
 }

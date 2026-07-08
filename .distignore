@@ -1,6 +1,7 @@
 /.git
 /.github
 /.claude
+/.wordpress-org
 /.distignore
 /node_modules
 CHANGELOG.md

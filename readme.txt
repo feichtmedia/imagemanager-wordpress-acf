@@ -4,7 +4,7 @@ Tags: acf, advanced custom fields, imagemanager, dam, digital asset management
 Requires at least: 7.0
 Tested up to: 7.0
 Requires PHP: 8.2
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GPL-2.0-or-later
 
 Integrates the FeichtMedia ImageManager DAM into Advanced Custom Fields (ACF) as a native field type.
@@ -189,6 +189,12 @@ No visitor IP addresses, post content, or other personally identifiable informat
 
 Only plugin-level changes are listed here. Changes to the internal Shared Core Component (`includes/shared/imagemanager-core/`) are documented in `CHANGELOG.md` under a separate `Core` sub-section of the relevant version entry.
 
+= 1.2.1 – 2026-07-08 =
+* Fixed: The plugin icons were not displayed in the WordPress.org plugin directory. They were shipped inside the plugin itself instead of the WordPress.org SVN assets directory and are now deployed to the correct location.
+* Fixed: The currently selected image lost its highlight in the file browser after navigating to another folder and back, even though no other image had been chosen. The selection now stays active while browsing folders until you explicitly select or deselect an image.
+* Fixed: ImageManager image fields placed inside an ACF Group always returned `null` in GraphQL (WPGraphQL for ACF). The resolver now handles all nesting variants — groups, repeaters, flexible content, and combinations of them — and also resolves fields attached to taxonomy terms, users, and options pages correctly.
+* Fixed: ImageManager image fields inside ACF Blocks (block data stored in `post_content`) always returned `null` in GraphQL. The resolver now reads the field value from the block's attributes, matching how WPGraphQL for ACF resolves block fields.
+
 = 1.2.0 – 2026-06-24 =
 * Added: Plugin icons for the WordPress plugin directory and the plugin list inside WordPress.
 * Updated: Categories in the modal are now listed in a fixed responsive grid layout instead of a floating layout. This improves the overview.
@@ -217,6 +223,9 @@ Only plugin-level changes are listed here. Changes to the internal Shared Core C
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.2.1 =
+Fixes GraphQL compatibility: image fields nested inside an ACF Group or inside ACF Blocks returned null. Also fixes the file browser losing the active-image highlight while browsing folders. No database changes. Safe to update.
 
 = 1.2.0 =
 * Fixes ACF Repeater compatibility: selecting images in the editor always updated the first row; GraphQL returned null for all Repeater sub-field values. Also fixes the file browser button in ACF blocks edited via the Expanded Editor (WordPress 7 / ACF 6.8+). No database changes. Safe to update.

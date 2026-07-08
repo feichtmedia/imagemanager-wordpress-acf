@@ -503,6 +503,10 @@
 	/**
 	 * Navigate into a category, pushing the current level onto the nav stack.
 	 *
+	 * The current selection (selectedImage / preSelectedImageId) survives
+	 * navigation on purpose: only an explicit image click changes it, so the
+	 * active image stays highlighted when the user browses away and back.
+	 *
 	 * @param {number} categoryId   - Category ID.
 	 * @param {string} categoryName - Display name of the category.
 	 * @returns {void}
@@ -510,9 +514,6 @@
 	function navigateToCategory(categoryId, categoryName) {
 		navStack.push({ id: categoryId, name: categoryName });
 		currentOffset = 0;
-		selectedImage = null;
-		preSelectedImageId = null;
-		setConfirmEnabled(false);
 		renderBreadcrumbs();
 		loadPage();
 	}
@@ -520,15 +521,14 @@
 	/**
 	 * Navigate to a specific index in the nav stack (breadcrumb click).
 	 *
+	 * Keeps the current selection — see navigateToCategory.
+	 *
 	 * @param {number} index - Index in navStack to navigate to (slice to index+1).
 	 * @returns {void}
 	 */
 	function navigateTo(index) {
 		navStack = navStack.slice(0, index + 1);
 		currentOffset = 0;
-		selectedImage = null;
-		preSelectedImageId = null;
-		setConfirmEnabled(false);
 		renderBreadcrumbs();
 		loadPage();
 	}
@@ -828,12 +828,15 @@
 			grid.appendChild(empty);
 		} else if (images && images.length) {
 			images.forEach(function (image) {
-				const imageId = image.newFilename || image.imageId || image.id || '';
+				const imageId = getImageId(image);
 				const owner = image.owner || projectId;
 				const thumbSrc = 'https://' + domain + '/' + THUMB_FILTERS + '/' + owner + '/' + imageId;
 				const infoUrl = dashUrl ? dashUrl + '/overview/edit?id=' + encodeURIComponent(imageId) : '';
+				// Compare by ID, not object identity — after navigating away and
+				// back, the tile is rebuilt from a fresh API object, but the
+				// selection must still be recognised as active.
 				const isSelected = !!(
-					(selectedImage && selectedImage.newFilename === imageId) ||
+					(selectedImage && getImageId(selectedImage) === imageId) ||
 					(!selectedImage && preSelectedImageId && preSelectedImageId === imageId)
 				);
 
@@ -944,13 +947,18 @@
 	 * @returns {void}
 	 */
 	function onImageClick(image) {
-		const imageId = image.newFilename || image.imageId || image.id || '';
+		const imageId = getImageId(image);
 
-		if (selectedImage && ((selectedImage.newFilename || '') === imageId)) {
+		if (selectedImage && (getImageId(selectedImage) === imageId)) {
 			selectedImage = null;
 		} else {
 			selectedImage = image;
 		}
+
+		// Any explicit click supersedes the pre-selection from the field value —
+		// otherwise a deliberate deselect would be undone on the next re-render
+		// (e.g. after navigating away and back), re-highlighting the old image.
+		preSelectedImageId = null;
 
 		// Sync visual selection state on all tiles.
 		modalEl.querySelectorAll('.fm-imagemanager-img-tile').forEach(function (tile) {
@@ -988,7 +996,7 @@
 	 * @returns {void}
 	 */
 	function updateField(fieldEl, imageData) {
-		const imageId = imageData.newFilename || imageData.imageId || imageData.id || '';
+		const imageId = getImageId(imageData);
 		const owner = imageData.owner || cfg.projectId || '';
 		const domain = cfg.domain || '';
 		const thumbSrc = 'https://' + domain + '/' + THUMB_FILTERS + '/' + owner + '/' + imageId;
@@ -1193,6 +1201,20 @@
 	}
 
 	// ── Utilities ───────────────────────────────────────────────────────────────
+
+	/**
+	 * Extract the canonical image ID from an API image object.
+	 *
+	 * Single source of truth for the ID fallback chain so that selection
+	 * comparisons (renderImages / onImageClick) and field writes (updateField)
+	 * always resolve the same ID for the same image object.
+	 *
+	 * @param {Object} image - API image object.
+	 * @returns {string} Image ID, or '' when none of the known keys is present.
+	 */
+	function getImageId(image) {
+		return image.newFilename || image.imageId || image.id || '';
+	}
 
 	/**
 	 * Reduce a stored field value to a bare image ID usable in the REST route.

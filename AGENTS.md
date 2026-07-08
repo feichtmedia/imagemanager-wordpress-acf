@@ -43,10 +43,10 @@ feichtmedia-imagemanager-acf/
 │   ├── class-graphql.php                    ← WPGraphQL resolvers (String + ImageManagerImage)
 │   ├── class-rest-proxy.php                 ← WP REST proxy to ImageManager API
 │   └── helpers.php                          ← stateless: URL builder, value parser, mapper, metadata fetch
-├── assets/                                  ← subfolders for asset types (JS, CSS, images); holds assets for SVN deploy directly (not in subfolders)
-│   ├── images/                              ← static assets (icons, logos, placeholders)
+├── assets/                                  ← runtime assets shipped with the plugin (subfolders per asset type)
 │   ├── js/acf-imagemanager-field.js         ← file browser modal, field UI, REST calls
 │   └── css/acf-imagemanager-field.css       ← field + modal styling (WP 7 admin)
+├── .wordpress-org/                          ← WordPress.org directory assets (icons, banners, screenshots); deployed to the SVN top-level /assets/ dir by the release workflow, NOT shipped in the plugin zip
 └── languages/                               ← .pot + .po/.mo per locale (no .json, no JS i18n pipeline)
 ```
 
@@ -75,7 +75,7 @@ plugins_loaded priority 10 → this plugin initialises:
 
 | Constant                        | Value                                           | Configurable?   |
 | ------------------------------- | ----------------------------------------------- | --------------- |
-| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.2.0'`                                       | bump on release |
+| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.2.1'`                                       | bump on release |
 | `FM_IMAGEMANAGER_ACF_PATH`      | `plugin_dir_path(__FILE__)`                     | no              |
 | `FM_IMAGEMANAGER_ACF_URL`       | `plugin_dir_url(__FILE__)`                      | no              |
 | `FM_IMAGEMANAGER_API_URL`       | `'https://imagemanager.feicht-media.de/api/v2'` | no              |
@@ -365,7 +365,18 @@ register_graphql_acf_field_type(
 
 `ImageManagerImage` fields: `imageId`, `relativeUrl`, `absoluteUrl`, `orgFilename`, `title`, `alt`, `copyright`, `width`, `height`, `filetype`, `filesize`.
 
-The resolver always calls `get_field()` which runs through `format_value()` — the GraphQL layer adds no extra API calls.
+### Value resolution (nesting-aware)
+
+`FM_ImageManager_GraphQL::resolve_field_value()` handles the different `$root` shapes WPGraphQL for ACF v2.x passes down — do not replace it with a plain `get_field()` call:
+
+| Context                                       | `$root` shape                                                | Handling                                                                  |
+| --------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| Top level of a field group                    | `['node' => <Model>, 'acf_field_group' => …]`                | `get_field()` with `\WPGraphQL\Acf\Utils::get_node_acf_id($node)` (works for posts, terms, users, options pages) |
+| Repeater row / flexible content layout        | formatted values keyed by field **name**                     | value used as-is (already formatted)                                       |
+| ACF Group sub-field (also group in group, repeater in group) | **raw** values keyed by field **key** (`field_…`) / `__key` for clones | `acf_format_value()` applied; metadata arrays are never re-formatted |
+| ACF Block (values in block `attrs` in `post_content`, not post meta) | `['node' => <parsed block array with blockName/attrs>, …]` | `acf_setup_meta()` on the block data under the prefixed block ID, then `get_field()`; raw-attrs fallback via `acf_format_value()`; guarded by `function_exists('acf_prepare_block')` (PRO-only) |
+
+In every path `format_value()` runs exactly once — the GraphQL layer adds no extra API calls.
 
 ---
 
