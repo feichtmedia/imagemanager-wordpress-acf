@@ -75,7 +75,7 @@ plugins_loaded priority 10 → this plugin initialises:
 
 | Constant                        | Value                                           | Configurable?   |
 | ------------------------------- | ----------------------------------------------- | --------------- |
-| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.2.1'`                                       | bump on release |
+| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.2.2'`                                       | bump on release |
 | `FM_IMAGEMANAGER_ACF_PATH`      | `plugin_dir_path(__FILE__)`                     | no              |
 | `FM_IMAGEMANAGER_ACF_URL`       | `plugin_dir_url(__FILE__)`                      | no              |
 | `FM_IMAGEMANAGER_API_URL`       | `'https://imagemanager.feicht-media.de/api/v2'` | no              |
@@ -178,6 +178,8 @@ All notable changes are tracked in `CHANGELOG.md`. Format:
 Add an entry for every feature, fix, or notable refactor. Group related changes under one version header. The date is the push/release date. If no Git is used, also list all changed files and directories under the version header.
 
 Entries always start with the action verb (Added, Fixed, Updated, Removed, …). Avoid passive voice or vague descriptions. Order within a version:
+
+**Fixed entries** should stay recognizable as cause → effect → fix, but as a tight summary, not a full postmortem: one clause per part, naming the affected function/file. Skip narrating every intermediate step, alternative considered, or exact cache-key/string literal unless it's the actual point of the bug. The goal is that the same bug class is recognizable later, not that the entry reconstructs the debugging session.
 
 1. Added
 2. Changed / Updated / Moved
@@ -373,8 +375,10 @@ register_graphql_acf_field_type(
 | --------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------- |
 | Top level of a field group                    | `['node' => <Model>, 'acf_field_group' => …]`                | `get_field()` with `\WPGraphQL\Acf\Utils::get_node_acf_id($node)` (works for posts, terms, users, options pages) |
 | Repeater row / flexible content layout        | formatted values keyed by field **name**                     | value used as-is (already formatted)                                       |
-| ACF Group sub-field (also group in group, repeater in group) | **raw** values keyed by field **key** (`field_…`) / `__key` for clones | `acf_format_value()` applied; metadata arrays are never re-formatted |
-| ACF Block (values in block `attrs` in `post_content`, not post meta) | `['node' => <parsed block array with blockName/attrs>, …]` | `acf_setup_meta()` on the block data under the prefixed block ID, then `get_field()`; raw-attrs fallback via `acf_format_value()`; guarded by `function_exists('acf_prepare_block')` (PRO-only) |
+| ACF Group sub-field (also group in group, repeater in group) | **raw** values keyed by field **key** (`field_…`) / `__key` for clones | `format_raw_value()` applied; metadata arrays are never re-formatted |
+| ACF Block (values in block `attrs` in `post_content`, not post meta) | `['node' => <parsed block array with blockName/attrs>, …]` | `acf_setup_meta()` on the block data under the prefixed block ID, then `get_field()`; raw-attrs fallback via `format_raw_value()`; guarded by `function_exists('acf_prepare_block')` (PRO-only) |
+
+Raw values are formatted by `format_raw_value()`, which applies the `acf/pre_format_value` + `acf/format_value` filters directly. **Never replace it with `acf_format_value()`**: that wrapper caches per `"$post_id:$field_name:formatted"`, and with post ID `0` (the real ID is unavailable in nested resolvers) two same-named sub-fields in different groups would collide and return each other's values.
 
 In every path `format_value()` runs exactly once — the GraphQL layer adds no extra API calls.
 

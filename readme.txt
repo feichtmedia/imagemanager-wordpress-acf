@@ -4,7 +4,7 @@ Tags: acf, advanced custom fields, imagemanager, dam, digital asset management
 Requires at least: 7.0
 Tested up to: 7.0
 Requires PHP: 8.2
-Stable tag: 1.2.1
+Stable tag: 1.2.2
 License: GPL-2.0-or-later
 
 Integrates the FeichtMedia ImageManager DAM into Advanced Custom Fields (ACF) as a native field type.
@@ -189,6 +189,9 @@ No visitor IP addresses, post content, or other personally identifiable informat
 
 Only plugin-level changes are listed here. Changes to the internal Shared Core Component (`includes/shared/imagemanager-core/`) are documented in `CHANGELOG.md` under a separate `Core` sub-section of the relevant version entry.
 
+= 1.2.2 – 2026-07-16 =
+* Fixed: ImageManager image fields sharing the same field name in different ACF Groups (e.g. `img_src`) all returned the first field's value in GraphQL. Each field now resolves its own value.
+
 = 1.2.1 – 2026-07-08 =
 * Fixed: The plugin icons were not displayed in the WordPress.org plugin directory. They were shipped inside the plugin itself instead of the WordPress.org SVN assets directory and are now deployed to the correct location.
 * Fixed: The currently selected image lost its highlight in the file browser after navigating to another folder and back, even though no other image had been chosen. The selection now stays active while browsing folders until you explicitly select or deselect an image.
@@ -223,6 +226,9 @@ Only plugin-level changes are listed here. Changes to the internal Shared Core C
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.2.2 =
+Fixes GraphQL returning the wrong image for same-named image fields in different ACF Groups. No database changes. Safe to update.
 
 = 1.2.1 =
 Fixes GraphQL compatibility: image fields nested inside an ACF Group or inside ACF Blocks returned null. Also fixes the file browser losing the active-image highlight while browsing folders. No database changes. Safe to update.

@@ -162,7 +162,7 @@ class FM_ImageManager_GraphQL {
 	 *   - ACF group: the group resolver fetches the group value WITHOUT
 	 *     formatting; ACF's group load_value() keys sub-values by field KEY, so
 	 *     $root holds the raw stored value (bare image ID) — format_value()
-	 *     must still be applied via acf_format_value().
+	 *     must still be applied via format_raw_value().
 	 *   - ACF block: ['node' => <parsed block array>, …]. The values live in
 	 *     the block comment's attrs in post_content, not in post meta — the
 	 *     block data must be registered as meta before get_field() can see it.
@@ -188,7 +188,7 @@ class FM_ImageManager_GraphQL {
 				if (null !== $key && isset($root[$key]) && '' !== $root[$key]) {
 					return is_array($root[$key])
 						? $root[$key]
-						: acf_format_value($root[$key], 0, $acf_field);
+						: $this->format_raw_value($root[$key], $acf_field);
 				}
 			}
 		}
@@ -222,7 +222,7 @@ class FM_ImageManager_GraphQL {
 			// (e.g. an unregistered block type): read the raw value straight
 			// from the block data and format it ourselves.
 			if (empty($value) && isset($node['attrs']['data'][$acf_field['name']]) && '' !== $node['attrs']['data'][$acf_field['name']]) {
-				$value = acf_format_value($node['attrs']['data'][$acf_field['name']], 0, $acf_field);
+				$value = $this->format_raw_value($node['attrs']['data'][$acf_field['name']], $acf_field);
 			}
 
 			return $value ?: null;
@@ -242,5 +242,30 @@ class FM_ImageManager_GraphQL {
 		}
 
 		return get_field($acf_field['name'], $source_id);
+	}
+
+	/**
+	 * Run ACF's format_value filters on a raw stored value.
+	 *
+	 * Deliberately does NOT use acf_format_value(): that wrapper caches the
+	 * result in the 'values' store under "$post_id:$field_name:formatted".
+	 * We format with post_id 0 (the real ID is not available inside nested
+	 * resolvers, and our format_value() ignores it), so two sub-fields with
+	 * the same name in different groups (e.g. img_src) would collide on the
+	 * cache key "0:img_src:formatted" and the second field would silently
+	 * return the first field's value. Applying the filters directly is
+	 * exactly what acf_format_value() does internally, minus the cache.
+	 *
+	 * @param mixed        $value     Raw stored value (bare image ID or legacy URL).
+	 * @param array<mixed> $acf_field The ACF field configuration.
+	 * @return mixed Formatted value (string or metadata array).
+	 */
+	protected function format_raw_value($value, array $acf_field) {
+		$check = apply_filters('acf/pre_format_value', null, $value, 0, $acf_field, false);
+		if (null !== $check) {
+			return $check;
+		}
+
+		return apply_filters('acf/format_value', $value, 0, $acf_field, false);
 	}
 }
