@@ -1,5 +1,9 @@
 # Changelog – FeichtMedia ImageManager for Advanced Custom Fields
 
+## [Unreleased]
+
+- Fixed: File browser modal (`dialog.fm-imagemanager-modal`) rendered at almost zero height in Safari, with the image grid visible but no loading state and barely any vertical space — reported in [issue #1](https://github.com/feichtmedia/imagemanager-wordpress-acf/issues/1). Cause: the dialog's height is `auto` capped by `max-height`, which is not a definite height per the flexbox spec; `.fm-imagemanager-modal-body` used the `flex: 1` shorthand (`flex-basis: 0%`), and Safari contributes ~0px for a 0% basis when auto-sizing the dialog, while Chrome/Firefox fall back to the content's natural height.
+
 ## [1.2.2] – 2026-07-16
 
 - Fixed: Two `imagemanager_image` fields sharing the same field name in different ACF Groups (e.g. `img_src`) both returned the first field's value in GraphQL. Cause: raw group values were formatted via `acf_format_value()`, which caches per `"$post_id:$field_name:formatted"` — and since nested resolvers format with post ID `0`, same-named fields collided on the cache key. Raw values are now formatted by a new `format_raw_value()` method in `includes/class-graphql.php` that applies the `acf/pre_format_value` / `acf/format_value` filters directly, without the cache.
