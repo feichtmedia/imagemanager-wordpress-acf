@@ -1,7 +1,8 @@
 # Changelog – FeichtMedia ImageManager for Advanced Custom Fields
 
-## [Unreleased]
+## [1.2.3] – 2026-08-19
 
+- Verified: Compatibility with WordPress 7.1.
 - Fixed: File browser modal (`dialog.fm-imagemanager-modal`) rendered at almost zero height in Safari, with the image grid visible but no loading state and barely any vertical space — reported in [issue #1](https://github.com/feichtmedia/imagemanager-wordpress-acf/issues/1). Cause: the dialog's height is `auto` capped by `max-height`, which is not a definite height per the flexbox spec; `.fm-imagemanager-modal-body` used the `flex: 1` shorthand (`flex-basis: 0%`), and Safari contributes ~0px for a 0% basis when auto-sizing the dialog, while Chrome/Firefox fall back to the content's natural height.
 
 ## [1.2.2] – 2026-07-16
