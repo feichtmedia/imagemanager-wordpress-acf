@@ -233,7 +233,13 @@ dialog.fm-imagemanager-modal::backdrop {
 /* ── Modal: scrollable body ─────────────────────────────────────────────── */
 
 .fm-imagemanager-modal-body {
-  flex: 1;
+  /* flex-basis: auto (not the flex: 1 shorthand's 0%) so Safari sizes the
+     auto-height dialog from this element's actual content height instead of
+     collapsing it — see https://github.com/philipwalton/flexbugs/issues/173.
+     min-height: 0 keeps overflow-y: auto working once max-height caps the
+     dialog and this element needs to shrink below its content height. */
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   padding: 16px 20px;
   position: relative;
