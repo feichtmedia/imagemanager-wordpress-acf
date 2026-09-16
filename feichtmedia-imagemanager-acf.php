@@ -35,6 +35,10 @@ register_activation_hook(__FILE__, function () {
 // 3) Plugin initialisation — runs after all plugins are loaded (priority 10, after Core at 5).
 add_action('plugins_loaded', function () {
 
+    // Candidate for the lazy per-site consumer sync (multisite, plugins_loaded:20).
+    // Registered before the ACF check — the activation hook does not depend on ACF either.
+    $GLOBALS['fm_imagemanager_consumer_candidates'][] = plugin_basename(__FILE__);
+
     // 3a) Hard dependency: ACF. Without it nothing can be registered.
     if (! class_exists('ACF')) {
         add_action('admin_notices', 'feichtmedia_imagemanager_acf_missing_notice');
@@ -66,7 +70,8 @@ add_action('plugins_loaded', function () {
     (new FM_ImageManager_Settings())->register();
 
     // 3e) REST proxy — only when an API key is configured.
-    if (get_option('feichtmedia_imagemanager_api_key')) {
+    // Resolved via Core so a network-wide key also enables the proxy on sites without their own.
+    if (FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_api_key')) {
         require_once FM_IMAGEMANAGER_ACF_PATH . 'includes/class-rest-proxy.php';
         (new FM_ImageManager_REST_Proxy())->register();
     }

@@ -57,14 +57,17 @@ feichtmedia-imagemanager-acf/
 ```
 plugins_loaded priority 5  → imagemanager-core boots (highest bundled version wins)
 plugins_loaded priority 10 → this plugin initialises:
+    0. Add plugin_basename() to $GLOBALS['fm_imagemanager_consumer_candidates'] (before the ACF check)
     1. ACF present? No → admin notice feichtmedia_imagemanager_acf_missing_notice(), return early.
     2. Register add_action('init', …, 1) closure that calls load_plugin_textdomain()
        (deferred — see "i18n rules"; priority 1 keeps it ahead of ACF's init:5 field-type registration)
     3. require helpers.php
     4. require class-acf-field-image.php → register on acf/include_field_types
     5. require class-settings.php → (new FM_ImageManager_Settings())->register()
-    6. if api_key option set → require class-rest-proxy.php → FM_ImageManager_REST_Proxy::register()
+    6. if FM_ImageManager_Core::get_setting('…_api_key') set → require class-rest-proxy.php → FM_ImageManager_REST_Proxy::register()
     7. if register_graphql_acf_field_type() exists → require class-graphql.php → FM_ImageManager_GraphQL::register()
+plugins_loaded priority 20 → Core: write lock on all managed options (the managed_options() list is complete now)
+                           → fm_imagemanager_sync_consumers(): multisite only, registers all candidates in this site's registry
 ```
 
 **Never** load classes outside this flow. **Never** run cleanup on deactivation — only in `uninstall.php`.
@@ -91,8 +94,11 @@ plugins_loaded priority 10 → this plugin initialises:
 | `feichtmedia_imagemanager_project_id` | Usergroup / project ID                                  |
 | `feichtmedia_imagemanager_domain`     | CDN domain (no protocol), e.g. `cdn.example.com`        |
 | `feichtmedia_imagemanager_consumers`  | Reference-counting registry (array of plugin basenames) |
+| `feichtmedia_imagemanager_network_enforce` | **Site option (network scope) only.** `1` = all sites use the network values |
 
-All are registered, rendered, and sanitised by `FM_ImageManager_Core`. This plugin only reads them.
+All are registered, rendered, and sanitised by `FM_ImageManager_Core`. This plugin only reads them — always via `FM_ImageManager_Core::get_setting()` (see "Multisite").
+
+On multisite, api_key, project_id, domain (and all other managed options) can also exist as site options (`wp_sitemeta`) under the **same names**, set on the network settings page. The consumer registry is always per site and never network-scoped.
 
 `feichtmedia_imagemanager_domain` is validated by `FM_ImageManager_Core::sanitize_domain()` against real hostname syntax (RFC 1123 labels, or a raw IP). Invalid input (paths, query strings, credentials, ports, malformed labels) is rejected — the previous value is kept and a `settings_errors()` notice is shown on the options page, rather than saving a partially-fixed value.
 
@@ -105,7 +111,28 @@ All are registered, rendered, and sanitised by `FM_ImageManager_Core`. This plug
 | `feichtmedia_imagemanager_acf_cache_enabled` | Whether Transient caching is active for metadata (default: `1`)       |
 | `feichtmedia_imagemanager_acf_cache_ttl`     | Metadata cache lifetime in seconds (default: `3600`, `0` = no expiry) |
 
-Both are registered and rendered by `FM_ImageManager_Settings` (the "ACF Field" section on the shared options page) and deleted in `uninstall.php`.
+Both are registered and rendered by `FM_ImageManager_Settings` (the "ACF Field" section on the shared options page) and deleted in `uninstall.php`. They are added to Core's managed options via the `fm_imagemanager_managed_options` filter, so network storage, the write lock, and read-only rendering apply to them too.
+
+---
+
+## Multisite
+
+**Rule: never call `get_option()` on a settings value.** Always use `FM_ImageManager_Core::get_setting( $name, $default )`. The only direct `get_option()` reads allowed are the per-site consumer registry (`bootstrap.php`, `uninstall.php`) and the scope-resolving internals of `FM_ImageManager_Core` itself (`get_setting()`, `own_field_value()`, `block_site_write()`, the site-scope branch in `sanitize_domain()`).
+
+`get_setting()` resolution:
+
+```
+! is_multisite()          → get_option()
+enforce == 1              → get_site_option()
+enforce == 0              → site value if the option exists and !== ''  (0 is a valid value — never use empty())
+                            otherwise get_site_option()
+```
+
+- **Managed options:** `FM_ImageManager_Core::managed_options()` (filter `fm_imagemanager_managed_options`, map `name => default`). Drives network saving, the write lock, and uninstall. Consumer plugins append their own options on `plugins_loaded:10`.
+- **Network settings page:** Network Admin → Settings → FeichtMedia ImageManager. Renders `do_settings_sections('feichtmedia-imagemanager')` (all sections of the site page) plus `feichtmedia-imagemanager-network` (enforce switch). Posts to `edit.php?action=feichtmedia_imagemanager` → `save_network_options()`, which runs `sanitize_option()` (i.e. the `register_setting()` callbacks) and `update_site_option()`, fires `fm_imagemanager_settings_updated`, and passes settings errors through the `fm_imagemanager_network_settings_errors` site transient.
+- **Form rendering:** field callbacks use `disabled( FM_ImageManager_Core::field_disabled() )`. Text fields that can inherit (api_key, project_id, domain) prefill only the scope's **own** value (`own_field_value()`) and show the inherited network value as placeholder (`inherited_field_value()`) — never prefill an inherited value, or saving the site page copies it into the site option. **Never print the network API key on a site page** (placeholder text only). Checkbox/number fields (cache options) use `field_value()` (resolved value). While enforced, site pages show a notice and no submit button.
+- **Write filter:** `block_site_write()` on `pre_update_option_{$name}` keeps the old value while enforced. While not enforced, it skips the write if the site has no own value yet and the submitted value equals the network value (inherit until deviated). Check option existence with `get_option( $name, null )` — `$old_value` holds the `register_setting()` default for missing options, never `false`. `update_site_option()` is not affected.
+- **Cache invalidation:** `FM_ImageManager_Settings` flushes metadata transients on `add_option_` / `update_option_` / `delete_option_{project_id|domain}` (current site — add/delete matter when a site switches between inherited and own value) and on `fm_imagemanager_settings_updated` (all sites). The flush is a direct `$wpdb` query on the options table, so it has no effect on transients held in a persistent object cache (Redis/Memcached); those expire via TTL.
 
 ---
 
@@ -401,8 +428,10 @@ In every path `format_value()` runs exactly once — the GraphQL layer adds no e
   1. Remove this plugin's basename from `feichtmedia_imagemanager_consumers`.
   2. If the registry is now empty → delete all shared options (`feichtmedia_imagemanager_api_key`, `feichtmedia_imagemanager_project_id`, `feichtmedia_imagemanager_domain`, `feichtmedia_imagemanager_consumers`).
   3. If other consumers remain → only update the registry, keep shared options.
-  4. Always: delete plugin-specific options (`feichtmedia_imagemanager_acf_cache_enabled`, `feichtmedia_imagemanager_acf_cache_ttl`) and metadata transients via a direct `$wpdb` query matching `_transient_feichtmedia_imagemanager_acf_meta_%`.
+  4. Always: delete plugin-specific options (`feichtmedia_imagemanager_acf_cache_enabled`, `feichtmedia_imagemanager_acf_cache_ttl`) and metadata transients via `feichtmedia_imagemanager_delete_metadata_transients()` (direct `$wpdb` query matching `_transient_feichtmedia_imagemanager_acf_meta_%`).
   5. Never delete `post_meta`.
+- **Multisite:** WordPress runs `uninstall.php` once, in the current site's context. Steps 1–4 live in `fm_imagemanager_acf_uninstall_site()` and run for every site via `get_sites()` + `switch_to_blog()`. Afterwards the plugin's own network options are always deleted; the shared network options (api_key, project_id, domain, network_enforce) only if no site has a consumer left.
+- **Consumer registry on multisite:** the activation hook fires once on network activation and never for sites created later, so `fm_imagemanager_sync_consumers()` (bootstrap, `plugins_loaded:20`) registers candidates per site lazily on each request.
 
 ---
 

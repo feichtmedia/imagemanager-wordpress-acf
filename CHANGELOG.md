@@ -1,5 +1,28 @@
 # Changelog – FeichtMedia ImageManager for Advanced Custom Fields
 
+## [Unreleased]
+
+- Added: Multisite support. All settings reads go through the new `FM_ImageManager_Core::get_setting()`, which resolves site vs. network scope: on multisite, network values (stored as site options under the same option names) act as a fallback for sites without their own value.
+- Added: Plugin-specific cache options (`feichtmedia_imagemanager_acf_cache_enabled`, `feichtmedia_imagemanager_acf_cache_ttl`) are registered as managed options via the `fm_imagemanager_managed_options` filter in `includes/class-settings.php`, so they are stored network-wide, write-locked while enforced, and rendered read-only on site settings pages.
+- Added: Lazy per-site consumer registration on multisite — the main file adds its basename to `$GLOBALS['fm_imagemanager_consumer_candidates']`, synced into each site's registry on `plugins_loaded` priority 20.
+- Added: `feichtmedia_imagemanager_delete_metadata_transients()` helper in `includes/helpers.php`, shared by `uninstall.php` and the new cache invalidation.
+- Added: Translations for all new network settings strings (`.pot` regenerated; `en_GB`, `de_DE`, `de_DE_formal`, `de_AT`, `de_CH` updated).
+- Updated: REST proxy gate in `feichtmedia-imagemanager-acf.php`, `FM_ImageManager_REST_Proxy::forward()`, `FM_ImageManager_ACF_Field_Image` (`render_field()`, `input_admin_enqueue_scripts()`, `format_value()`) and `includes/helpers.php` read settings via `FM_ImageManager_Core::get_setting()` instead of `get_option()`.
+- Updated: `AGENTS.md` with a new "Multisite" section and updated shared options, bootstrap order, and uninstall documentation.
+- Fixed: Uninstalling on multisite only cleaned up the site the uninstall ran on, leaving options — including the API key — on every other site. `uninstall.php` now runs the cleanup per site via `switch_to_blog()` and deletes the network options once no site has a consumer left.
+- Fixed: Network activation registered the plugin in the consumer registry of a single site only (and of no sites created later), so reference counting in `uninstall.php` failed on all other sites. Fixed by the lazy consumer sync.
+- Fixed: Cached metadata kept returning URLs with the old project ID / domain for up to one cache TTL after either setting changed. Metadata transients are now flushed on `add_option_`, `update_option_` and `delete_option_{project_id|domain}` (a site switching between the inherited network value and its own creates or removes the option, which never fires `update_option_*`) and, for network saves, on every site via the `fm_imagemanager_settings_updated` action.
+
+### Core
+
+- Bumped Core component version `1.1.0` → `1.2.0` in `bootstrap.php`.
+- Added: Network settings page under Network Admin → Settings → FeichtMedia ImageManager (`register_network_options_page()`, `render_network_options_page()`, `save_network_options()` via `network_admin_edit_feichtmedia_imagemanager`). Renders all sections of the site settings page plus an "Enforce configuration network-wide" switch (`feichtmedia_imagemanager_network_enforce` site option). Values are sanitized with the callbacks registered via `register_setting()`; settings errors are carried across the redirect in a site transient.
+- Added: `managed_options()` registry (filterable via `fm_imagemanager_managed_options`) and the static accessors `get_setting()`, `is_network_enforced()`, `field_value()`, `field_disabled()`.
+- Added: Server-side write filter — `block_site_write()` on `pre_update_option_{$name}` for every managed option keeps the stored site value while the network configuration is enforced, so direct POSTs to `options.php` cannot bypass the disabled fields. While not enforced, a site without its own value keeps inheriting when the submitted value equals the network value, so always-posted fields (checkbox, TTL) do not pin inherited values on the first save of the site page.
+- Added: `fm_imagemanager_sync_consumers()` in `bootstrap.php` and the `fm_imagemanager_settings_updated` action fired after network saves.
+- Updated: While enforced, site settings pages show all fields disabled with the inherited network values, an info notice, and no submit button. The network API key is never printed on site settings pages (placeholder only). While not enforced, site text fields show only the site's own value, with the inherited network value as placeholder plus a hint — prefilling it would copy the network value into the site option on save. The incomplete-settings notice links super admins to the network page and tells site admins to contact their network administrator.
+- Fixed: `sanitize_domain()` fell back to the current site's option on invalid input, which would have copied the main site's domain into the network option. It now falls back to the value of the scope being saved.
+
 ## [1.2.3] – 2026-08-19
 
 - Verified: Compatibility with WordPress 7.1.

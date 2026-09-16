@@ -42,7 +42,7 @@ function feichtmedia_imagemanager_parse_value(string $value): array {
 
 	return [
 		'format'  => 'current',
-		'groupId' => (string) get_option('feichtmedia_imagemanager_project_id', ''),
+		'groupId' => (string) FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_project_id', ''),
 		'imageId' => $value,
 	];
 }
@@ -115,7 +115,7 @@ function feichtmedia_imagemanager_map_image(array $data, string $group_id, strin
  */
 function feichtmedia_imagemanager_get_metadata(string $group_id, string $image_id, string $domain): array {
 	$cache_key     = 'feichtmedia_imagemanager_acf_meta_' . md5($image_id);
-	$cache_enabled = (bool) get_option('feichtmedia_imagemanager_acf_cache_enabled', 1);
+	$cache_enabled = (bool) FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_acf_cache_enabled', 1);
 
 	if ($cache_enabled) {
 		$cached = get_transient($cache_key);
@@ -124,7 +124,7 @@ function feichtmedia_imagemanager_get_metadata(string $group_id, string $image_i
 		}
 	}
 
-	$api_key  = get_option('feichtmedia_imagemanager_api_key', '');
+	$api_key  = FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_api_key', '');
 	$response = wp_remote_get(
 		FM_IMAGEMANAGER_API_URL . '/images/' . rawurlencode($image_id),
 		[
@@ -159,9 +159,28 @@ function feichtmedia_imagemanager_get_metadata(string $group_id, string $image_i
 	$meta = feichtmedia_imagemanager_map_image($data, $group_id, $image_id, $domain);
 
 	if ($cache_enabled) {
-		$ttl = (int) get_option('feichtmedia_imagemanager_acf_cache_ttl', 3600);
+		$ttl = (int) FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_acf_cache_ttl', 3600);
 		set_transient($cache_key, $meta, $ttl);
 	}
 
 	return $meta;
+}
+
+/**
+ * Delete all cached image metadata transients of the current site.
+ *
+ * Uses a direct query because transient keys are hashed and cannot be enumerated
+ * via the Transients API. Reads $wpdb->options at call time so it targets the
+ * right table after switch_to_blog().
+ *
+ * @return void
+ */
+function feichtmedia_imagemanager_delete_metadata_transients(): void {
+	global $wpdb;
+
+	$wpdb->query(
+		"DELETE FROM {$wpdb->options}
+		 WHERE option_name LIKE '\_transient\_feichtmedia\_imagemanager\_acf\_meta\_%'
+		    OR option_name LIKE '\_transient\_timeout\_feichtmedia\_imagemanager\_acf\_meta\_%'"
+	);
 }

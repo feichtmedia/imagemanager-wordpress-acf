@@ -178,3 +178,52 @@ msgstr "Hat einen Wert"
 #: includes/class-acf-field-image.php
 msgid "Has no value"
 msgstr "Hat keinen Wert"
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "Network"
+msgstr "Netzwerk"
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "Enforce Configuration"
+msgstr "Konfiguration erzwingen"
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "Enforce configuration network-wide"
+msgstr "Konfiguration netzwerkweit erzwingen"
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "When enabled, all sites use the values above and site administrators can no longer change them. When disabled, the values above only apply to sites that have not set their own."
+msgstr "Wenn aktiviert, verwenden alle Websites die obigen Werte und Website-Administratoren können sie nicht mehr ändern. Wenn deaktiviert, gelten die obigen Werte nur für Websites, die keine eigenen Werte festgelegt haben."
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "These values apply to all sites in the network. Sites without their own value use them as a fallback, unless the configuration is enforced below."
+msgstr "Diese Werte gelten für alle Websites im Netzwerk. Websites ohne eigenen Wert verwenden sie als Fallback, sofern die Konfiguration unten nicht erzwungen wird."
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "These settings are managed network-wide by your network administrator and cannot be changed on this site."
+msgstr "Diese Einstellungen werden von Ihrem Netzwerk-Administrator netzwerkweit verwaltet und können auf dieser Website nicht geändert werden."
+
+#. translators: %s: URL to the network settings page
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "FeichtMedia ImageManager: Please complete the network settings under <a href=\"%s\">Network Admin &#8594; Settings &#8594; FeichtMedia ImageManager</a>."
+msgstr "FeichtMedia ImageManager: Bitte vervollständigen Sie die Netzwerk-Einstellungen unter <a href=\"%s\">Netzwerkverwaltung &#8594; Einstellungen &#8594; FeichtMedia ImageManager</a>."
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "FeichtMedia ImageManager: The configuration is incomplete. It is managed network-wide — please contact your network administrator."
+msgstr "FeichtMedia ImageManager: Die Konfiguration ist unvollständig. Sie wird netzwerkweit verwaltet — bitte wenden Sie sich an Ihren Netzwerk-Administrator."
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "Settings saved."
+msgstr "Einstellungen gespeichert."
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "Sorry, you are not allowed to manage network options."
+msgstr "Sie sind leider nicht berechtigt, Netzwerk-Optionen zu verwalten."
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "Using the network-wide API key"
+msgstr "Netzwerkweiter API-Schlüssel wird verwendet"
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "Leave empty to use the network-wide value."
+msgstr "Leer lassen, um den netzwerkweiten Wert zu verwenden."
