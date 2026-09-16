@@ -67,28 +67,30 @@ jobs:
       - name: Compile language files
         run: npm run compile-languages
 
+      # Build outputs go to RUNNER_TEMP, not the workspace: the WordPress.org
+      # deploy step rsyncs the whole workspace (minus .distignore) into SVN trunk.
       - name: Build plugin zip
         run: |
           SLUG="feichtmedia-imagemanager-acf"
-          mkdir -p dist/${SLUG}
-          rsync -a --exclude-from='.distignore' --exclude='dist' \
-            ./ dist/${SLUG}/
-          cd dist
-          zip -r "../${SLUG}.zip" "${SLUG}/"
+          BUILD_DIR="${RUNNER_TEMP}/build"
+          mkdir -p "${BUILD_DIR}/${SLUG}"
+          rsync -a --exclude-from='.distignore' ./ "${BUILD_DIR}/${SLUG}/"
+          cd "${BUILD_DIR}"
+          zip -r "${RUNNER_TEMP}/${SLUG}.zip" "${SLUG}/"
 
       - name: Extract release notes
         if: github.event_name == 'push'
         run: |
           VERSION="${{ steps.version.outputs.tag }}"
-          awk "/^## \[${VERSION}\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md > release_notes.md
+          awk "/^## \[${VERSION}\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md > "${RUNNER_TEMP}/release_notes.md"
 
       - name: Upload release asset
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          body_path: release_notes.md
+          body_path: ${{ runner.temp }}/release_notes.md
           make_latest: "true"
-          files: feichtmedia-imagemanager-acf.zip
+          files: ${{ runner.temp }}/feichtmedia-imagemanager-acf.zip
 
       - name: Deploy to WordPress.org
         if: github.event_name == 'push'

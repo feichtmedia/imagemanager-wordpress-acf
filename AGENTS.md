@@ -32,7 +32,7 @@ feichtmedia-imagemanager-acf/
 ├── .distignore                               ← WordPress.org deployment exclusions
 ├── .github/
 │   └── workflows/
-│       └── release.yml                       ← PHP syntax check, version consistency check, language compilation, GitHub release ZIP, WP.org SVN deploy
+│       └── release.yml                       ← PHP syntax check, version consistency check, language compilation, GitHub release ZIP, WP.org SVN deploy (the deploy rsyncs the whole workspace minus .distignore into SVN trunk — write build outputs to $RUNNER_TEMP, never into the workspace)
 ├── includes/
 │   ├── shared/
 │   │   └── imagemanager-core/               ← IDENTICAL copy in every FM ImageManager plugin

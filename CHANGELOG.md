@@ -12,6 +12,7 @@
 - Fixed: Uninstalling on multisite only cleaned up the site the uninstall ran on, leaving options — including the API key — on every other site. `uninstall.php` now runs the cleanup per site via `switch_to_blog()` and deletes the network options once no site has a consumer left.
 - Fixed: Network activation registered the plugin in the consumer registry of a single site only (and of no sites created later), so reference counting in `uninstall.php` failed on all other sites. Fixed by the lazy consumer sync.
 - Fixed: Cached metadata kept returning URLs with the old project ID / domain for up to one cache TTL after either setting changed. Metadata transients are now flushed on `add_option_`, `update_option_` and `delete_option_{project_id|domain}` (a site switching between the inherited network value and its own creates or removes the option, which never fires `update_option_*`) and, for network saves, on every site via the `fm_imagemanager_settings_updated` action.
+- Fixed: Plugin installs from WordPress.org (1.2.0–1.2.3) contained the release build artifacts `dist/` (a full duplicate of the plugin), `feichtmedia-imagemanager-acf.zip` and `release_notes.md`. Cause: `.github/workflows/release.yml` wrote them into the workspace, which `10up/action-wordpress-plugin-deploy` rsyncs into SVN trunk minus `.distignore`. The build now writes to `$RUNNER_TEMP`, and `.distignore` excludes `/dist`, `/*.zip` and `/release_notes.md` as a safety net.
 
 ### Core
 
