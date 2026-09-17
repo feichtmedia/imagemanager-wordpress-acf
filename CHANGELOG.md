@@ -13,6 +13,7 @@
 - Updated: `AGENTS.md` with a new "Metadata cache" section and updated options, multisite, performance, uninstall, and changelog documentation.
 - Fixed: A cache TTL of `0` ("no expiry") stored metadata transients without expiration, which WordPress autoloads on every request and never purges — on large sites this bloats the autoloaded options. The new `feichtmedia_imagemanager_get_metadata_cache_ttl()` maps `0`, and values above 30 days (which Memcached reads as an already expired Unix timestamp), to 30 days.
 - Fixed: Cache invalidation after project ID / domain changes had no effect with a persistent object cache (Redis/Memcached): the direct `$wpdb` query only reaches the options table, so stale metadata was served until the TTL expired. Rotating the cache key salt now invalidates entries in every cache backend.
+- Fixed: The cache TTL input was cut off for values with more than four digits (e.g. `2592000`), because WordPress core's `small-text` class limits number inputs to 65px (70px on mobile). `FM_ImageManager_Settings::render_cache_ttl_field()` now gives the input a `min-width` of 100px.
 
 ### Multisite support
 

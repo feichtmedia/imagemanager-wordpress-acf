@@ -292,6 +292,7 @@ class FM_ImageManager_Settings {
 			max="<?php echo esc_attr( MONTH_IN_SECONDS ); ?>"
 			step="1"
 			class="small-text"
+			style="min-width: 100px;"
 			<?php disabled( FM_ImageManager_Core::field_disabled() ); ?> />
 		<p class="description">
 			<?php esc_html_e( 'How long API responses are cached, in seconds. Default: 3600 (1 hour). Maximum: 2592000 (30 days); 0 also uses the maximum.', 'feichtmedia-imagemanager-acf' ); ?>
