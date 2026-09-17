@@ -1,6 +1,6 @@
 # Changelog – FeichtMedia ImageManager for Advanced Custom Fields
 
-## [Unreleased]
+## [1.3.0] – 2026-09-17
 
 ### Metadata cache management
 
@@ -49,6 +49,12 @@
 - Updated: Bootstrap order and i18n rules in `AGENTS.md`, bootstrap order in `README.md`.
 - Fixed: Plugin strings on the settings pages and the ACF-missing notice stayed in English wherever ACF is not loaded — notably the network settings page when ACF is not active on the main site, because the network admin runs the main site's plugins. Cause: `feichtmedia-imagemanager-acf.php` returned on the ACF check before registering `load_plugin_textdomain()`, while Core renders its settings pages regardless. The textdomain is now registered before the ACF check.
 - Fixed: The "Configuration incomplete" notice in `FM_ImageManager_ACF_Field_Image::render_field()` was never translated: its msgid wraps the warning sign in `<span aria-hidden="true">`, but all `.po` files kept a msgid without the `<span>`. The `.po` entries now use the current msgid.
+
+### Documentation
+
+- Updated: `readme.txt` with the network setup, a new "Does the plugin support WordPress Multisite?" FAQ, and the new cache behaviour (clear button, 30-day TTL cap, automatic invalidation, multisite uninstall). The per-image WP-CLI command for clearing the cache was replaced, because salted cache keys can no longer be derived from the image ID alone.
+- Updated: `README.md` with new "Metadata cache" and "Multisite" sections and the multisite steps of the bootstrap order.
+- Updated: `package.json` version synced to the plugin version (was `1.1.0`).
 
 ## [1.2.3] – 2026-08-19
 

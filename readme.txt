@@ -4,7 +4,7 @@ Tags: acf, advanced custom fields, imagemanager, dam, digital asset management
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.2.3
+Stable tag: 1.3.0
 License: GPL-2.0-or-later
 
 Integrates the FeichtMedia ImageManager DAM into Advanced Custom Fields (ACF) as a native field type.
@@ -26,7 +26,8 @@ This plugin adds a native field type for the **FeichtMedia ImageManager** – yo
 * Three return formats: relative URL, absolute URL, metadata object
 * WPGraphQL integration (`String` type and custom `ImageManagerImage` type)
 * Backward compatible with stored relative URLs from plain text fields
-* Metadata cache via WordPress Transients (configurable TTL, default: 1 hour)
+* Metadata cache via WordPress Transients (configurable TTL, default: 1 hour; can be cleared with one click)
+* WordPress Multisite support with network-wide settings that can be enforced for all sites
 * Multilingual: en_US (source), en_GB, de_DE, de_DE_formal, de_AT, de_CH
 
 == Installation ==
@@ -35,6 +36,8 @@ This plugin adds a native field type for the **FeichtMedia ImageManager** – yo
 2. Activate the plugin under **Plugins** in the WordPress admin.
 3. Go to **Settings → FeichtMedia ImageManager** and enter your API key, project ID, and CDN domain.
 4. Add a field of type **ImageManager > Image** to any ACF field group.
+
+On a multisite network, you can enter the settings once for all sites under **Network Admin → Settings → FeichtMedia ImageManager** instead.
 
 After setup, a new category "FeichtMedia ImageManager" with the field type **ImageManager Image** will appear in the ACF field editor.
 
@@ -55,6 +58,12 @@ After activation, go to **Settings → FeichtMedia ImageManager**. Enter three v
 1. **API Key** – Your personal access key for the ImageManager. It is stored encrypted in the WordPress database and is never transmitted to the browser.
 2. **Project ID** – The ID of your ImageManager project (also called usergroup ID), e.g. `wordpress`. It is part of every CDN URL.
 3. **CDN Domain** – Your CDN domain without protocol and without a trailing slash, e.g. `cdn.example.com`. The plugin adds `https://` automatically.
+
+= Does the plugin support WordPress Multisite? =
+
+Yes. Network administrators can enter the API key, project ID, CDN domain, and cache settings for all sites under **Network Admin → Settings → FeichtMedia ImageManager**. Sites without their own values use the network values automatically; site administrators can still enter their own values on the site settings page.
+
+To apply the network values to every site, enable **Enforce configuration network-wide**. Site settings pages then show the network values read-only. The network API key is never displayed on site settings pages.
 
 = What do I enter as the CDN domain? =
 
@@ -110,12 +119,12 @@ The **Metadata** return format stores each image's data as a WordPress Transient
 
 The cache TTL is **3,600 seconds (1 hour)** by default and can be adjusted or fully disabled under **Settings → FeichtMedia ImageManager** in the **ACF Field** section.
 
-Changes to title, alt text, copyright, or dimensions in the ImageManager will not appear in WordPress until the Transient expires or the cache is cleared manually.
+Changes to title, alt text, copyright, or dimensions in the ImageManager will not appear in WordPress until the Transient expires or the cache is cleared manually. The cache is cleared automatically when you change the project ID, the CDN domain, or the cache settings.
 
-To clear the cache for a specific image immediately:
+To clear the cache immediately:
 
-* **WP-CLI:** `wp transient delete feichtmedia_imagemanager_acf_meta_$(php -r "echo md5('YOUR_IMAGE_ID');")`
-* **Code / mu-plugin:** `delete_transient( 'feichtmedia_imagemanager_acf_meta_' . md5( 'YOUR_IMAGE_ID' ) );`
+* **Settings page:** Click **Clear metadata cache** under **Settings → FeichtMedia ImageManager** in the **ACF Field** section. On a multisite network, the same button on the network settings page clears the cache of all sites.
+* **WP-CLI:** `wp eval 'feichtmedia_imagemanager_flush_metadata_cache();'` (on multisite, select the site with `--url`)
 * **Caching plugin:** Use the "Delete all transients" or "Flush object cache" feature of your caching plugin.
 
 The **Relative URL** and **Absolute URL** formats are never cached – they are calculated purely at runtime from the stored image ID, project ID, and CDN domain, without any API calls.
@@ -124,8 +133,9 @@ The **Relative URL** and **Absolute URL** formats are never cached – they are 
 
 Yes. Under **Settings → FeichtMedia ImageManager** in the **ACF Field** section you can:
 
-* Set the **cache TTL** in seconds (default: 3,600). A value of `0` means the cache never expires.
+* Set the **cache TTL** in seconds (default: 3,600; maximum: 2,592,000 = 30 days). A value of `0` also uses the maximum of 30 days.
 * **Fully disable the cache** by unchecking the corresponding option. In this case, one API request is made per image per page load.
+* **Clear the cache** with the **Clear metadata cache** button.
 
 = What happens when multiple editors work simultaneously? =
 
@@ -144,7 +154,9 @@ Nothing. Deactivation does not delete any data. Stored image IDs remain as `post
 
 = What happens when the plugin is uninstalled? =
 
-On uninstall, the plugin removes its own settings (`feichtmedia_imagemanager_acf_cache_enabled`, `feichtmedia_imagemanager_acf_cache_ttl`). The **shared settings** (API key, project ID, CDN domain) are only deleted if no other FeichtMedia ImageManager plugin is still active. If other such plugins are installed, the shared settings are kept. `post_meta` (stored image IDs) is **never** deleted.
+On uninstall, the plugin removes its own settings (`feichtmedia_imagemanager_acf_cache_enabled`, `feichtmedia_imagemanager_acf_cache_ttl`) and its cached metadata. The **shared settings** (API key, project ID, CDN domain) are only deleted if no other FeichtMedia ImageManager plugin is still active. If other such plugins are installed, the shared settings are kept. `post_meta` (stored image IDs) is **never** deleted.
+
+On a multisite network, the cleanup runs on every site. The network-wide shared settings are only deleted once no site in the network uses a FeichtMedia ImageManager plugin anymore.
 
 = How do I use the field in my theme or plugin? =
 
@@ -177,7 +189,7 @@ Data transmitted to the FeichtMedia ImageManager API with each request:
 * **API key** – sent in the Authorization header to authenticate the request.
 * **Project ID** – part of the request URL for images in the preview.
 * **Image ID** – included in the URL for single-image metadata requests.
-* **WordPress site URL** – transmitted automatically as part of the HTTP User-Agent header (e.g. `WordPress/7.0; https://example.com FeichtMedia-ImageManager-ACF/1.1.0`).
+* **WordPress site URL** – transmitted automatically as part of the HTTP User-Agent header (e.g. `WordPress/7.0; https://example.com FeichtMedia-ImageManager-ACF/1.3.0`).
 * **IP address of the WordPress server** – logged by the ImageManager API as the origin of the HTTP request.
 
 No visitor IP addresses, post content, or other personally identifiable information is transmitted. All requests originate from the WordPress server, not from the visitor's browser.
@@ -188,6 +200,20 @@ No visitor IP addresses, post content, or other personally identifiable informat
 == Changelog ==
 
 Only plugin-level changes are listed here. Changes to the internal Shared Core Component (`includes/shared/imagemanager-core/`) are documented in `CHANGELOG.md` under a separate `Core` sub-section of the relevant version entry.
+
+= 1.3.0 – 2026-09-17 =
+* Added: WordPress Multisite support. Network administrators can configure the plugin for all sites under Network Admin → Settings → FeichtMedia ImageManager and optionally enforce this configuration, so site administrators can no longer change it. Sites without their own settings use the network values.
+* Added: "Clear metadata cache" button in the "ACF Field" settings section. On the network settings page, it clears the cache of all sites.
+* Added: Translations of the plugin name, description, and author in the plugin list.
+* Updated: The metadata cache is now cleared automatically when the project ID, the CDN domain, or the cache settings change.
+* Updated: The cache TTL is limited to 30 days. A value of `0` now also uses 30 days instead of never expiring.
+* Fixed: Cached image metadata kept returning URLs with the old project ID or CDN domain after either setting changed — with a persistent object cache (Redis, Memcached) until the cache expired.
+* Fixed: A cache TTL of `0` stored metadata in options that WordPress loads on every request and never cleans up, which could slow down sites with many images.
+* Fixed: The cache TTL input cut off values with more than four digits.
+* Fixed: The settings pages and the notice about missing ACF were not translated when ACF was not active, for example on the network settings page.
+* Fixed: The "Configuration incomplete" notice in the image field was never translated.
+* Fixed: Deleting the plugin on a multisite network only removed its settings — including the API key — from a single site. The cleanup now covers every site, including sites created after network activation.
+* Fixed: Plugin installs from WordPress.org (1.2.0–1.2.3) contained unnecessary build files, including a complete duplicate copy of the plugin.
 
 = 1.2.3 – 2026-08-19 =
 * Verified compatibility with WordPress 7.1.
@@ -230,6 +256,9 @@ Only plugin-level changes are listed here. Changes to the internal Shared Core C
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.3.0 =
+Adds WordPress Multisite support with network-wide settings and a button to clear the metadata cache. Cached image metadata is cleared once after the update. A cache TTL of 0 now means 30 days instead of no expiry. Stored field values are unchanged. Safe to update.
 
 = 1.2.3 =
 Fixes the file browser modal rendering at almost zero height in Safari. No database changes. Safe to update.
