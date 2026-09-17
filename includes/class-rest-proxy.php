@@ -156,7 +156,7 @@ class FM_ImageManager_REST_Proxy {
 	 * @return WP_REST_Response
 	 */
 	private function forward(string $path, WP_REST_Request $request, array $allowed_params): WP_REST_Response {
-		$api_key = get_option('feichtmedia_imagemanager_api_key', '');
+		$api_key = FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_api_key', '');
 
 		if (empty($api_key)) {
 			return new WP_REST_Response(

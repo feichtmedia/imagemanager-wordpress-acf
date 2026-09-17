@@ -32,7 +32,7 @@ feichtmedia-imagemanager-acf/
 ├── .distignore                               ← WordPress.org deployment exclusions
 ├── .github/
 │   └── workflows/
-│       └── release.yml                       ← PHP syntax check, version consistency check, language compilation, GitHub release ZIP, WP.org SVN deploy
+│       └── release.yml                       ← PHP syntax check, version consistency check, language compilation, GitHub release ZIP, WP.org SVN deploy (the deploy rsyncs the whole workspace minus .distignore into SVN trunk — write build outputs to $RUNNER_TEMP, never into the workspace)
 ├── includes/
 │   ├── shared/
 │   │   └── imagemanager-core/               ← IDENTICAL copy in every FM ImageManager plugin
@@ -42,7 +42,7 @@ feichtmedia-imagemanager-acf/
 │   ├── class-acf-field-image.php            ← ACF field type "imagemanager_image"
 │   ├── class-graphql.php                    ← WPGraphQL resolvers (String + ImageManagerImage)
 │   ├── class-rest-proxy.php                 ← WP REST proxy to ImageManager API
-│   └── helpers.php                          ← stateless: URL builder, value parser, mapper, metadata fetch
+│   └── helpers.php                          ← stateless: URL builder, value parser, mapper, metadata fetch + cache (key, TTL, flush)
 ├── assets/                                  ← runtime assets shipped with the plugin (subfolders per asset type)
 │   ├── js/acf-imagemanager-field.js         ← file browser modal, field UI, REST calls
 │   └── css/acf-imagemanager-field.css       ← field + modal styling (WP 7 admin)
@@ -57,14 +57,18 @@ feichtmedia-imagemanager-acf/
 ```
 plugins_loaded priority 5  → imagemanager-core boots (highest bundled version wins)
 plugins_loaded priority 10 → this plugin initialises:
-    1. ACF present? No → admin notice feichtmedia_imagemanager_acf_missing_notice(), return early.
-    2. Register add_action('init', …, 1) closure that calls load_plugin_textdomain()
-       (deferred — see "i18n rules"; priority 1 keeps it ahead of ACF's init:5 field-type registration)
+    0. Add plugin_basename() to $GLOBALS['fm_imagemanager_consumer_candidates'] (before the ACF check)
+    1. Register add_action('init', …, 1) closure that calls load_plugin_textdomain()
+       (deferred — see "i18n rules"; priority 1 keeps it ahead of ACF's init:5 field-type registration;
+       before the ACF check, because the ACF-missing notice and the Core settings pages render without ACF)
+    2. ACF present? No → admin notice feichtmedia_imagemanager_acf_missing_notice(), return early.
     3. require helpers.php
     4. require class-acf-field-image.php → register on acf/include_field_types
     5. require class-settings.php → (new FM_ImageManager_Settings())->register()
-    6. if api_key option set → require class-rest-proxy.php → FM_ImageManager_REST_Proxy::register()
+    6. if FM_ImageManager_Core::get_setting('…_api_key') set → require class-rest-proxy.php → FM_ImageManager_REST_Proxy::register()
     7. if register_graphql_acf_field_type() exists → require class-graphql.php → FM_ImageManager_GraphQL::register()
+plugins_loaded priority 20 → Core: write lock on all managed options (the managed_options() list is complete now)
+                           → fm_imagemanager_sync_consumers(): multisite only, registers all candidates in this site's registry
 ```
 
 **Never** load classes outside this flow. **Never** run cleanup on deactivation — only in `uninstall.php`.
@@ -75,7 +79,7 @@ plugins_loaded priority 10 → this plugin initialises:
 
 | Constant                        | Value                                           | Configurable?   |
 | ------------------------------- | ----------------------------------------------- | --------------- |
-| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.2.3'`                                       | bump on release |
+| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.3.0'`                                       | bump on release |
 | `FM_IMAGEMANAGER_ACF_PATH`      | `plugin_dir_path(__FILE__)`                     | no              |
 | `FM_IMAGEMANAGER_ACF_URL`       | `plugin_dir_url(__FILE__)`                      | no              |
 | `FM_IMAGEMANAGER_API_URL`       | `'https://imagemanager.feicht-media.de/api/v2'` | no              |
@@ -91,8 +95,11 @@ plugins_loaded priority 10 → this plugin initialises:
 | `feichtmedia_imagemanager_project_id` | Usergroup / project ID                                  |
 | `feichtmedia_imagemanager_domain`     | CDN domain (no protocol), e.g. `cdn.example.com`        |
 | `feichtmedia_imagemanager_consumers`  | Reference-counting registry (array of plugin basenames) |
+| `feichtmedia_imagemanager_network_enforce` | **Site option (network scope) only.** `1` = all sites use the network values |
 
-All are registered, rendered, and sanitised by `FM_ImageManager_Core`. This plugin only reads them.
+All are registered, rendered, and sanitised by `FM_ImageManager_Core`. This plugin only reads them — always via `FM_ImageManager_Core::get_setting()` (see "Multisite").
+
+On multisite, api_key, project_id, domain (and all other managed options) can also exist as site options (`wp_sitemeta`) under the **same names**, set on the network settings page. The consumer registry is always per site and never network-scoped.
 
 `feichtmedia_imagemanager_domain` is validated by `FM_ImageManager_Core::sanitize_domain()` against real hostname syntax (RFC 1123 labels, or a raw IP). Invalid input (paths, query strings, credentials, ports, malformed labels) is rejected — the previous value is kept and a `settings_errors()` notice is shown on the options page, rather than saving a partially-fixed value.
 
@@ -100,12 +107,46 @@ All are registered, rendered, and sanitised by `FM_ImageManager_Core`. This plug
 
 ## Plugin-specific options (owned by this plugin)
 
-| Option key                                   | Description                                                           |
-| -------------------------------------------- | --------------------------------------------------------------------- |
-| `feichtmedia_imagemanager_acf_cache_enabled` | Whether Transient caching is active for metadata (default: `1`)       |
-| `feichtmedia_imagemanager_acf_cache_ttl`     | Metadata cache lifetime in seconds (default: `3600`, `0` = no expiry) |
+| Option key                                   | Description                                                                                          |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `feichtmedia_imagemanager_acf_cache_enabled` | Whether Transient caching is active for metadata (default: `1`)                                      |
+| `feichtmedia_imagemanager_acf_cache_ttl`     | Metadata cache lifetime in seconds (default: `3600`, max. `2592000` = 30 days; `0` = the maximum)    |
+| `feichtmedia_imagemanager_acf_cache_salt`    | **Internal, per site, not a setting.** Random cache key salt, rotated on every flush (see "Metadata cache") |
 
-Both are registered and rendered by `FM_ImageManager_Settings` (the "ACF Field" section on the shared options page) and deleted in `uninstall.php`.
+The two settings are registered and rendered by `FM_ImageManager_Settings` (the "ACF Field" section on the shared options page) and deleted in `uninstall.php`. They are added to Core's managed options via the `fm_imagemanager_managed_options` filter, so network storage, the write lock, and read-only rendering apply to them too. The salt is **not** a managed option — it is never network-scoped, has no form field, and is deleted per site in `uninstall.php`.
+
+---
+
+## Metadata cache
+
+Only the `metadata` return format is cached (see "Performance rules"). All cache functions live in `includes/helpers.php`:
+
+- **Key:** `feichtmedia_imagemanager_get_metadata_cache_key()` → `feichtmedia_imagemanager_acf_meta_{md5(salt . imageId)}`. The salt is read directly via `get_option()` (internal state, not a setting). A site without a salt is flushed once before the salt is created, which removes entries stored under the old unsalted keys (`md5(imageId)`, before the salt existed).
+- **TTL:** `feichtmedia_imagemanager_get_metadata_cache_ttl()` caps the setting at `MONTH_IN_SECONDS` and maps `0` to that cap. **Never pass `0` to `set_transient()`**: WordPress autoloads transients without expiration on every request and never purges them. **Never exceed 30 days**: Memcached reads larger expirations as an (already expired) Unix timestamp. `FM_ImageManager_Settings::sanitize_ttl()` clamps saved values to `0`–`2592000`.
+- **Flush:** `feichtmedia_imagemanager_flush_metadata_cache()` rotates the salt first (invalidates entries in every backend, including a persistent object cache that the query cannot reach), then `feichtmedia_imagemanager_delete_metadata_transients()` deletes the rows from the options table (direct `$wpdb` query — hashed keys cannot be enumerated via the Transients API) and returns the number of deleted entries. With a persistent object cache the count is always `0`; invalidated entries expire via their TTL.
+- **Automatic invalidation:** `FM_ImageManager_Settings` flushes the current site on `add_option_` / `update_option_` / `delete_option_` of `project_id`, `domain`, `acf_cache_enabled`, and `acf_cache_ttl` (add/delete matter on multisite when a site switches between inherited and own value), and all sites on `fm_imagemanager_settings_updated`.
+- **"Clear metadata cache" button:** rendered by `render_cache_flush_field()` as the last row of the "ACF Field" section. The row sits inside the settings form and forms cannot be nested, so the button uses `form="feichtmedia-imagemanager-acf-flush-cache"` to submit a separate form that `render_cache_flush_form()` prints on `admin_footer`. Site page → `admin-post.php?action=feichtmedia_imagemanager_acf_flush_cache` (current site, `manage_options`); network page → `network/edit.php?action=feichtmedia_imagemanager_acf_flush_cache` (all sites, `manage_network_options`). Both run `handle_flush_request()` (capability + nonce `feichtmedia_imagemanager_acf_flush_nonce`), which redirects back with `fm-imagemanager-cache-cleared={count}` (a removable query arg). `render_flush_notice()` prints the success notice on `admin_notices` / `network_admin_notices` — deliberately not via `add_settings_error()`, because the site settings page prints settings errors twice (`options-head.php` and Core's `render_options_page()`). The button stays enabled while the network configuration is enforced — it changes no setting.
+
+---
+
+## Multisite
+
+**Rule: never call `get_option()` on a settings value.** Always use `FM_ImageManager_Core::get_setting( $name, $default )`. The only direct `get_option()` reads allowed are the per-site consumer registry (`bootstrap.php`, `uninstall.php`), the per-site metadata cache salt (`feichtmedia_imagemanager_get_metadata_cache_key()`), and the scope-resolving internals of `FM_ImageManager_Core` itself (`get_setting()`, `own_field_value()`, `block_site_write()`, the site-scope branch in `sanitize_domain()`).
+
+`get_setting()` resolution:
+
+```
+! is_multisite()          → get_option()
+enforce == 1              → get_site_option()
+enforce == 0              → site value if the option exists and !== ''  (0 is a valid value — never use empty())
+                            otherwise get_site_option()
+```
+
+- **Managed options:** `FM_ImageManager_Core::managed_options()` (filter `fm_imagemanager_managed_options`, map `name => default`). Drives network saving, the write lock, and uninstall. Consumer plugins append their own options on `plugins_loaded:10`.
+- **Network settings page:** Network Admin → Settings → FeichtMedia ImageManager. Renders `do_settings_sections('feichtmedia-imagemanager')` (all sections of the site page) plus `feichtmedia-imagemanager-network` (enforce switch). Posts to `edit.php?action=feichtmedia_imagemanager` → `save_network_options()`, which runs `sanitize_option()` (i.e. the `register_setting()` callbacks) and `update_site_option()`, fires `fm_imagemanager_settings_updated`, and passes settings errors through the `fm_imagemanager_network_settings_errors` site transient.
+- **Form rendering:** field callbacks use `disabled( FM_ImageManager_Core::field_disabled() )`. Text fields that can inherit (api_key, project_id, domain) prefill only the scope's **own** value (`own_field_value()`) and show the inherited network value as placeholder (`inherited_field_value()`) — never prefill an inherited value, or saving the site page copies it into the site option. **Never print the network API key on a site page** (placeholder text only). Checkbox/number fields (cache options) use `field_value()` (resolved value). While enforced, site pages show a notice and no submit button.
+- **Write filter:** `block_site_write()` on `pre_update_option_{$name}` keeps the old value while enforced. While not enforced, it skips the write if the site has no own value yet and the submitted value equals the network value (inherit until deviated). Check option existence with `get_option( $name, null )` — `$old_value` holds the `register_setting()` default for missing options, never `false`. `update_site_option()` is not affected.
+- **Cache invalidation:** metadata transients and the cache key salt are stored per site. Site-level option changes flush the current site; network saves (`fm_imagemanager_settings_updated`) and the network page's "Clear metadata cache" button flush every site via `get_sites()` + `switch_to_blog()`. Details in "Metadata cache".
 
 ---
 
@@ -197,7 +238,7 @@ This project has **two independent version numbers**:
 3. `readme.txt` → `Stable tag:`
 4. `CHANGELOG.md` → new version header + entries
 
-**Core component version** — tracks `includes/shared/imagemanager-core/` only. Stored in `bootstrap.php` (`$GLOBALS['fm_imagemanager_core_candidates'][]`). Bump this **only** when `class-imagemanager-core.php` itself changes, and keep it in sync across **all** FeichtMedia ImageManager plugins (the highest bundled version wins at runtime). Core version changes are logged in `CHANGELOG.md` under a separate `### Core` sub-section within the relevant plugin version entry — they are **not** tracked in `readme.txt`.
+**Core component version** — tracks `includes/shared/imagemanager-core/` only. Stored in `bootstrap.php` (`$GLOBALS['fm_imagemanager_core_candidates'][]`). Bump this **only** when `class-imagemanager-core.php` itself changes, and keep it in sync across **all** FeichtMedia ImageManager plugins (the highest bundled version wins at runtime). Core version changes are logged in `CHANGELOG.md` under a separate `### Core` sub-section within the relevant plugin version entry (`#### Core` below the related `###` section when the entry is grouped into topic sections, as in `[1.3.0]`) — they are **not** tracked in `readme.txt`.
 
 ### Notes on changes
 
@@ -228,7 +269,8 @@ Also, the `AGENTS.md` file must be reviewed and updated if necessary to reflect 
 - **No JS i18n pipeline.** All UI strings translated in PHP and passed to JS via `wp_localize_script` as `window.fmImageManager.strings`. The JS reads from that object — never calls `wp.i18n.__()`.
 - `wp_set_script_translations()` is **not used**.
 - `.po`/`.mo` files are the single source of truth for all translations (PHP and JS alike).
-- `load_plugin_textdomain()` is called from an `add_action('init', …, 1)` closure, never directly during `plugins_loaded` — calling it earlier triggers WordPress's "translation loading triggered too early" `_doing_it_wrong()` notice. Priority 1 keeps it ahead of ACF's `init:5` field-type registration (`acf/include_field_types`) so translated field labels still resolve.
+- `load_plugin_textdomain()` is called from an `add_action('init', …, 1)` closure, never directly during `plugins_loaded` — calling it earlier triggers WordPress's "translation loading triggered too early" `_doing_it_wrong()` notice. Priority 1 keeps it ahead of ACF's `init:5` field-type registration (`acf/include_field_types`) so translated field labels still resolve. The closure is registered **before** the ACF check: the Core settings pages render even when ACF is not loaded (e.g. the network admin runs the main site's active plugins, so ACF is missing there when it is only active on other sites), and the ACF-missing notice itself is translated.
+- After changing a msgid in code (including markup inside it), update the msgid **and** msgstr in every `.po` file, not only the `.pot` — a stale msgid silently falls back to English. Recompile with `npm run compile-languages`.
 
 Supported locales: `en_GB`, `de_DE`, `de_DE_formal`, `de_AT` (formal/Sie), `de_CH` (formal/Sie, no ß).
 Fallback for any other locale: en_US (automatic via gettext — no code needed).
@@ -389,7 +431,7 @@ In every path `format_value()` runs exactly once — the GraphQL layer adds no e
 1. **One modal DOM node** — guarded against double-init. Never instantiated per field.
 2. **Assets enqueued once** — one script handle, one style handle. `wp_localize_script` outputs the config object once.
 3. **Zero HTTP calls on field render** — neither in the editor nor on the frontend for URL formats.
-4. **Metadata format** — always go through `feichtmedia_imagemanager_get_metadata()` which uses a Transient (key: `feichtmedia_imagemanager_acf_meta_{md5(imageId)}`, TTL: `feichtmedia_imagemanager_acf_cache_ttl` option, default 3600 s; caching can be disabled via `feichtmedia_imagemanager_acf_cache_enabled`). Never call the API directly inside `format_value()`.
+4. **Metadata format** — always go through `feichtmedia_imagemanager_get_metadata()` which uses a Transient (key: `feichtmedia_imagemanager_acf_meta_{md5(salt . imageId)}`, TTL: `feichtmedia_imagemanager_acf_cache_ttl` option, default 3600 s, capped at 30 days; caching can be disabled via `feichtmedia_imagemanager_acf_cache_enabled`; see "Metadata cache"). Never call the API directly inside `format_value()`.
 5. **Default return format is `relative_url`** — zero HTTP, pure string construction.
 
 ---
@@ -401,8 +443,10 @@ In every path `format_value()` runs exactly once — the GraphQL layer adds no e
   1. Remove this plugin's basename from `feichtmedia_imagemanager_consumers`.
   2. If the registry is now empty → delete all shared options (`feichtmedia_imagemanager_api_key`, `feichtmedia_imagemanager_project_id`, `feichtmedia_imagemanager_domain`, `feichtmedia_imagemanager_consumers`).
   3. If other consumers remain → only update the registry, keep shared options.
-  4. Always: delete plugin-specific options (`feichtmedia_imagemanager_acf_cache_enabled`, `feichtmedia_imagemanager_acf_cache_ttl`) and metadata transients via a direct `$wpdb` query matching `_transient_feichtmedia_imagemanager_acf_meta_%`.
+  4. Always: delete plugin-specific options (`feichtmedia_imagemanager_acf_cache_enabled`, `feichtmedia_imagemanager_acf_cache_ttl`), metadata transients via `feichtmedia_imagemanager_delete_metadata_transients()` (direct `$wpdb` query matching `_transient_feichtmedia_imagemanager_acf_meta_%`), and the cache key salt (`feichtmedia_imagemanager_acf_cache_salt`).
   5. Never delete `post_meta`.
+- **Multisite:** WordPress runs `uninstall.php` once, in the current site's context. Steps 1–4 live in `fm_imagemanager_acf_uninstall_site()` and run for every site via `get_sites()` + `switch_to_blog()`. Afterwards the plugin's own network options are always deleted; the shared network options (api_key, project_id, domain, network_enforce) only if no site has a consumer left.
+- **Consumer registry on multisite:** the activation hook fires once on network activation and never for sites created later, so `fm_imagemanager_sync_consumers()` (bootstrap, `plugins_loaded:20`) registers candidates per site lazily on each request.
 
 ---
 

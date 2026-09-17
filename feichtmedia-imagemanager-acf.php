@@ -3,7 +3,7 @@
 /**
  * Plugin Name: FeichtMedia ImageManager for Advanced Custom Fields
  * Description: ACF custom field type for the FeichtMedia ImageManager DAM. Editors pick images through a native WP-admin file browser; all API requests are proxied server-side so the API key never reaches the browser.
- * Version:     1.2.3
+ * Version:     1.3.0
  * Author:      FeichtMedia
  * Author URI:  https://www.feicht-media.de/
  * Text Domain: feichtmedia-imagemanager-acf
@@ -18,7 +18,7 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
-define('FM_IMAGEMANAGER_ACF_VERSION', '1.2.3');
+define('FM_IMAGEMANAGER_ACF_VERSION', '1.3.0');
 define('FM_IMAGEMANAGER_ACF_PATH', plugin_dir_path(__FILE__));
 define('FM_IMAGEMANAGER_ACF_URL', plugin_dir_url(__FILE__));
 define('FM_IMAGEMANAGER_API_URL', 'https://imagemanager.feicht-media.de/api/v2');
@@ -35,17 +35,18 @@ register_activation_hook(__FILE__, function () {
 // 3) Plugin initialisation — runs after all plugins are loaded (priority 10, after Core at 5).
 add_action('plugins_loaded', function () {
 
-    // 3a) Hard dependency: ACF. Without it nothing can be registered.
-    if (! class_exists('ACF')) {
-        add_action('admin_notices', 'feichtmedia_imagemanager_acf_missing_notice');
-        return;
-    }
+    // Candidate for the lazy per-site consumer sync (multisite, plugins_loaded:20).
+    // Registered before the ACF check — the activation hook does not depend on ACF either.
+    $GLOBALS['fm_imagemanager_consumer_candidates'][] = plugin_basename(__FILE__);
 
-    // 3b) Translations. Deferred to the `init` hook — calling load_plugin_textdomain()
+    // 3a) Translations. Deferred to the `init` hook — calling load_plugin_textdomain()
     // any earlier (e.g. directly here on plugins_loaded) triggers WordPress's
     // "translation loading triggered too early" _doing_it_wrong() notice. Priority 1
     // ensures the textdomain is ready before ACF registers field types on init:5
     // (acf/include_field_types), so translated field labels are not missed.
+    // Registered before the ACF check: the ACF-missing notice and the Core settings
+    // pages (which render without ACF, e.g. in the network admin when ACF is not
+    // active on the main site) use this textdomain too.
     add_action('init', function () {
         load_plugin_textdomain(
             'feichtmedia-imagemanager-acf',
@@ -53,6 +54,12 @@ add_action('plugins_loaded', function () {
             dirname(plugin_basename(__FILE__)) . '/languages'
         );
     }, 1);
+
+    // 3b) Hard dependency: ACF. Without it nothing can be registered.
+    if (! class_exists('ACF')) {
+        add_action('admin_notices', 'feichtmedia_imagemanager_acf_missing_notice');
+        return;
+    }
 
     // 3c) Helpers + ACF field type.
     require_once FM_IMAGEMANAGER_ACF_PATH . 'includes/helpers.php';
@@ -66,7 +73,8 @@ add_action('plugins_loaded', function () {
     (new FM_ImageManager_Settings())->register();
 
     // 3e) REST proxy — only when an API key is configured.
-    if (get_option('feichtmedia_imagemanager_api_key')) {
+    // Resolved via Core so a network-wide key also enables the proxy on sites without their own.
+    if (FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_api_key')) {
         require_once FM_IMAGEMANAGER_ACF_PATH . 'includes/class-rest-proxy.php';
         (new FM_ImageManager_REST_Proxy())->register();
     }

@@ -91,9 +91,9 @@ class FM_ImageManager_ACF_Field_Image extends acf_field {
 	 * @return void
 	 */
 	public function render_field($field): void {
-		$api_key    = get_option('feichtmedia_imagemanager_api_key', '');
-		$project_id = get_option('feichtmedia_imagemanager_project_id', '');
-		$domain     = get_option('feichtmedia_imagemanager_domain', '');
+		$api_key    = FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_api_key', '');
+		$project_id = FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_project_id', '');
+		$domain     = FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_domain', '');
 		$thumb_filters = 'fit-in/300x300/filters:quality(80)/filters:strip_exif()/filters:strip_icc()/filters:no_upscale()';
 
 		if (empty($api_key) || empty($project_id) || empty($domain)) {
@@ -190,8 +190,8 @@ class FM_ImageManager_ACF_Field_Image extends acf_field {
 			'fmImageManager',
 			[
 				'restNamespace' => 'feichtmedia/imagemanager/v2',
-				'projectId'     => get_option('feichtmedia_imagemanager_project_id', ''),
-				'domain'        => get_option('feichtmedia_imagemanager_domain', ''),
+				'projectId'     => FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_project_id', ''),
+				'domain'        => FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_domain', ''),
 				'dashboardUrl'  => FM_IMAGEMANAGER_DASHBOARD_URL,
 				// All UI strings translated in PHP; JS reads from this object only.
 				'strings'       => [
@@ -255,7 +255,7 @@ class FM_ImageManager_ACF_Field_Image extends acf_field {
 		$parsed   = feichtmedia_imagemanager_parse_value((string) $value);
 		$image_id = $parsed['imageId'];
 		$group_id = $parsed['groupId'];
-		$domain   = get_option('feichtmedia_imagemanager_domain', '');
+		$domain   = FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_domain', '');
 
 		switch ($field['return_format'] ?? 'relative_url') {
 			case 'absolute_url':

@@ -7,8 +7,8 @@ Internal reference for developers. For the full specification and AI-agent conte
 ## Setup
 
 1. Install and activate ACF (free or PRO).
-2. Go to **Settings → FeichtMedia ImageManager** and enter the API key and project settings.
-3. The REST proxy and file-browser modal activate automatically once an API key is saved.
+2. Go to **Settings → FeichtMedia ImageManager** and enter the API key and project settings. On multisite, the same settings can be entered for all sites under **Network Admin → Settings → FeichtMedia ImageManager** (see [Multisite](#multisite)).
+3. The REST proxy and file-browser modal activate automatically once an API key is saved (site or network).
 
 Optional integrations activate automatically when present:
 
@@ -21,14 +21,14 @@ Optional integrations activate automatically when present:
 | File / Directory                                                | Purpose                                                                              |
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | `feichtmedia-imagemanager-acf.php`                              | Bootstrap, constants, activation hook                                                |
-| `uninstall.php`                                                 | Reference-counted cleanup                                                            |
-| `includes/shared/imagemanager-core/bootstrap.php`               | Version-negotiated boot (highest bundled version wins)                               |
-| `includes/shared/imagemanager-core/class-imagemanager-core.php` | Shared options page, option registration, consumer registry                          |
-| `includes/class-settings.php`                                   | Plugin-specific settings section on shared options page                              |
+| `uninstall.php`                                                 | Reference-counted cleanup (per site on multisite)                                    |
+| `includes/shared/imagemanager-core/bootstrap.php`               | Version-negotiated boot (highest bundled version wins), consumer sync                |
+| `includes/shared/imagemanager-core/class-imagemanager-core.php` | Shared + network options pages, option registration, setting scope resolution        |
+| `includes/class-settings.php`                                   | Plugin-specific settings section (cache options, "Clear metadata cache" button)      |
 | `includes/class-rest-proxy.php`                                 | WP REST proxy to ImageManager API                                                    |
 | `includes/class-acf-field-image.php`                            | ACF field type `imagemanager_image`                                                  |
 | `includes/class-graphql.php`                                    | WPGraphQL for ACF v2.x integration (optional)                                        |
-| `includes/helpers.php`                                          | Value parser, URL builder, API mapper, metadata fetch (Transient-cached)             |
+| `includes/helpers.php`                                          | Value parser, URL builder, API mapper, metadata fetch + cache (key, TTL, flush)      |
 | `assets/js/acf-imagemanager-field.js`                           | File-browser modal and field UI                                                      |
 | `assets/css/acf-imagemanager-field.css`                         | Field and modal styles (WP 7 admin)                                                  |
 | `languages/`                                                    | `.pot` + `.po`/`.mo` per locale (`de_DE`, `de_DE_formal`, `de_AT`, `de_CH`, `en_GB`) |
@@ -42,7 +42,7 @@ Optional integrations activate automatically when present:
 
 | Constant                        | Value                                           |
 | ------------------------------- | ----------------------------------------------- |
-| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.2.0'` (bump on every release)               |
+| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.3.0'` (bump on every release)               |
 | `FM_IMAGEMANAGER_ACF_PATH`      | `plugin_dir_path(__FILE__)`                     |
 | `FM_IMAGEMANAGER_ACF_URL`       | `plugin_dir_url(__FILE__)`                      |
 | `FM_IMAGEMANAGER_API_URL`       | `'https://imagemanager.feicht-media.de/api/v2'` |
@@ -55,12 +55,15 @@ Optional integrations activate automatically when present:
 ```
 plugins_loaded priority 5  → imagemanager-core boots (highest bundled version wins)
 plugins_loaded priority 10 → this plugin initialises:
-    1. ACF present? No → show admin notice, return early.
-    2. Register add_action('init', …, 1) closure that calls load_plugin_textdomain() (deferred)
+    0. Add plugin_basename() to $GLOBALS['fm_imagemanager_consumer_candidates'] (before the ACF check)
+    1. Register add_action('init', …, 1) closure that calls load_plugin_textdomain() (deferred, before the ACF check)
+    2. ACF present? No → show admin notice, return early.
     3. require helpers.php + class-acf-field-image.php → register on acf/include_field_types
     4. FM_ImageManager_Settings::register() (always)
-    5. api_key option set? → FM_ImageManager_REST_Proxy::register()
+    5. FM_ImageManager_Core::get_setting('…_api_key') set? → FM_ImageManager_REST_Proxy::register()
     6. register_graphql_acf_field_type() exists? → FM_ImageManager_GraphQL::register()
+plugins_loaded priority 20 → Core: write lock on all managed options
+                           → fm_imagemanager_sync_consumers(): multisite only, registers all candidates in this site's registry
 ```
 
 ---
@@ -77,7 +80,7 @@ All routes are GET-only and require `edit_posts` capability.
 | `/categories`              | `/api/v2/categories`              |
 | `/categories/{categoryId}` | `/api/v2/categories/{categoryId}` |
 
-The API key is injected server-side from `wp_options` and never sent to the browser.  
+The API key is injected server-side (resolved via `FM_ImageManager_Core::get_setting()`) and never sent to the browser.  
 Only whitelisted query params are forwarded upstream (see `FM_ImageManager_REST_Proxy::PARAM_WHITELIST`). Timeout: 15 s.
 
 ---
@@ -100,6 +103,25 @@ At first glance `allow_null` looks redundant with `required` — a required fiel
 The case that needs both is a **non-required field whose value, once chosen, must not be cleared again** (for whatever editorial reason). That is `required = false` + `allow_null = false` — impossible to express with `required` alone.
 
 To prevent the two from contradicting each other, **`required` always wins**: a required field never shows the "Remove" button regardless of `allow_null` (see the `empty($field['required']) && ! empty($field['allow_null'])` guard in `render_field()`). `allow_null` therefore only has an effect on non-required fields.
+
+---
+
+## Metadata cache
+
+Only the `metadata` return format is cached (Transients). All cache functions live in `includes/helpers.php`:
+
+- **Key:** `feichtmedia_imagemanager_acf_meta_{md5(salt . imageId)}`. The salt is a per-site option (`feichtmedia_imagemanager_acf_cache_salt`, not a setting) and is rotated on every flush, which invalidates entries in every cache backend — including a persistent object cache (Redis/Memcached) that a `$wpdb` query cannot reach.
+- **TTL:** `feichtmedia_imagemanager_acf_cache_ttl` (default `3600`), capped at 30 days. `0` maps to the cap — never pass `0` to `set_transient()` (autoloaded, never purged) and never exceed 30 days (Memcached reads it as a Unix timestamp).
+- **Flush:** `feichtmedia_imagemanager_flush_metadata_cache()` rotates the salt and deletes the transient rows. It runs automatically when project ID, domain, or the cache options change, and via the "Clear metadata cache" button (site page: current site; network page: all sites).
+
+---
+
+## Multisite
+
+- **Never call `get_option()` on a settings value** — always use `FM_ImageManager_Core::get_setting()`. On multisite, network values (site options under the same names) act as a fallback for sites without their own value; when "Enforce configuration network-wide" is on, the network values always win.
+- **Network settings page:** Network Admin → Settings → FeichtMedia ImageManager. Renders all sections of the site settings page plus the enforce switch.
+- **Managed options:** Core's `managed_options()` (filter `fm_imagemanager_managed_options`) — this plugin adds its cache options there, so they are network-scoped, write-locked while enforced, and read-only on site pages.
+- **Uninstall** runs the cleanup on every site via `switch_to_blog()`; shared network options are only deleted once no site has a consumer left.
 
 ---
 

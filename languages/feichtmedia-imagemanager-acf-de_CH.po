@@ -21,6 +21,26 @@ msgstr ""
 "X-Generator: FeichtMedia\n"
 "X-Domain: feichtmedia-imagemanager-acf\n"
 
+#. Plugin Name of the plugin
+#: feichtmedia-imagemanager-acf.php
+msgid "FeichtMedia ImageManager for Advanced Custom Fields"
+msgstr "FeichtMedia ImageManager for Advanced Custom Fields"
+
+#. Description of the plugin
+#: feichtmedia-imagemanager-acf.php
+msgid "ACF custom field type for the FeichtMedia ImageManager DAM. Editors pick images through a native WP-admin file browser; all API requests are proxied server-side so the API key never reaches the browser."
+msgstr "Eigener ACF-Feldtyp für den FeichtMedia ImageManager (DAM). Bilder werden über einen in den WordPress-Adminbereich integrierten Dateibrowser ausgewählt; alle API-Anfragen laufen serverseitig über einen Proxy, sodass der API-Schlüssel nie an den Browser übertragen wird."
+
+#. Author of the plugin
+#: feichtmedia-imagemanager-acf.php
+msgid "FeichtMedia"
+msgstr "FeichtMedia"
+
+#. Author URI of the plugin
+#: feichtmedia-imagemanager-acf.php
+msgid "https://www.feicht-media.de/"
+msgstr "https://www.feicht-media.de/"
+
 msgid "FeichtMedia ImageManager"
 msgstr "FeichtMedia ImageManager"
 
@@ -66,8 +86,8 @@ msgstr "Speichert Metadaten-Antworten der ImageManager API in WordPress-Transien
 msgid "Cache TTL"
 msgstr "Cache-TTL"
 
-msgid "How long API responses are cached, in seconds. Default: 3600 (1 hour). Set to 0 for no expiry."
-msgstr "Wie lange API-Antworten in Sekunden gecacht werden. Standard: 3600 (1 Stunde). 0 = kein Ablauf."
+msgid "How long API responses are cached, in seconds. Default: 3600 (1 hour). Maximum: 2592000 (30 days); 0 also uses the maximum."
+msgstr "Wie lange API-Antworten in Sekunden gecacht werden. Standard: 3600 (1 Stunde). Maximum: 2592000 (30 Tage); 0 verwendet ebenfalls das Maximum."
 
 msgid "Image"
 msgstr "Bild"
@@ -90,8 +110,8 @@ msgstr "Leer erlauben"
 msgid "Allow the selected image to be removed. Ignored when the field is required."
 msgstr "Erlaubt das gewählte Bild zu entfernen. Einstellung wird ignoriert, wenn das Feld erforderlich ist."
 
-msgid "&#9888; Configuration incomplete. Please complete all settings under <a href=\"%s\">Settings &#8594; FeichtMedia ImageManager</a>."
-msgstr "&#9888; Konfiguration unvollständig. Bitte vervollständigen Sie alle Einstellungen unter <a href=\"%s\">Einstellungen &#8594; FeichtMedia ImageManager</a>."
+msgid "<span aria-hidden=\"true\">&#9888;</span> Configuration incomplete. Please complete all settings under <a href=\"%s\">Settings &#8594; FeichtMedia ImageManager</a>."
+msgstr "<span aria-hidden=\"true\">&#9888;</span> Konfiguration unvollständig. Bitte ergänzen Sie alle Einstellungen unter <a href=\"%s\">Einstellungen &#8594; FeichtMedia ImageManager</a>."
 
 msgid "Add image"
 msgstr "Bild hinzufügen"
@@ -178,3 +198,83 @@ msgstr "Hat einen Wert"
 #: includes/class-acf-field-image.php
 msgid "Has no value"
 msgstr "Hat keinen Wert"
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "Network"
+msgstr "Netzwerk"
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "Enforce Configuration"
+msgstr "Konfiguration erzwingen"
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "Enforce configuration network-wide"
+msgstr "Konfiguration netzwerkweit erzwingen"
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "When enabled, all sites use the values above and site administrators can no longer change them. When disabled, the values above only apply to sites that have not set their own."
+msgstr "Wenn aktiviert, verwenden alle Websites die obigen Werte und Website-Administratoren können sie nicht mehr ändern. Wenn deaktiviert, gelten die obigen Werte nur für Websites, die keine eigenen Werte festgelegt haben."
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "These values apply to all sites in the network. Sites without their own value use them as a fallback, unless the configuration is enforced below."
+msgstr "Diese Werte gelten für alle Websites im Netzwerk. Websites ohne eigenen Wert verwenden sie als Fallback, sofern die Konfiguration unten nicht erzwungen wird."
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "These settings are managed network-wide by your network administrator and cannot be changed on this site."
+msgstr "Diese Einstellungen werden von Ihrem Netzwerk-Administrator netzwerkweit verwaltet und können auf dieser Website nicht geändert werden."
+
+#. translators: %s: URL to the network settings page
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "FeichtMedia ImageManager: Please complete the network settings under <a href=\"%s\">Network Admin &#8594; Settings &#8594; FeichtMedia ImageManager</a>."
+msgstr "FeichtMedia ImageManager: Bitte vervollständigen Sie die Netzwerk-Einstellungen unter <a href=\"%s\">Netzwerkverwaltung &#8594; Einstellungen &#8594; FeichtMedia ImageManager</a>."
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "FeichtMedia ImageManager: The configuration is incomplete. It is managed network-wide — please contact your network administrator."
+msgstr "FeichtMedia ImageManager: Die Konfiguration ist unvollständig. Sie wird netzwerkweit verwaltet — bitte wenden Sie sich an Ihren Netzwerk-Administrator."
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "Settings saved."
+msgstr "Einstellungen gespeichert."
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "Sorry, you are not allowed to manage network options."
+msgstr "Sie sind leider nicht berechtigt, Netzwerk-Optionen zu verwalten."
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "Using the network-wide API key"
+msgstr "Netzwerkweiter API-Schlüssel wird verwendet"
+
+#: includes/shared/imagemanager-core/class-imagemanager-core.php
+msgid "Leave empty to use the network-wide value."
+msgstr "Leer lassen, um den netzwerkweiten Wert zu verwenden."
+
+#: includes/class-settings.php
+msgid "Clear Cache"
+msgstr "Cache leeren"
+
+#: includes/class-settings.php
+msgid "Clear metadata cache"
+msgstr "Metadaten-Cache leeren"
+
+#: includes/class-settings.php
+msgid "Deletes the cached image metadata of this site. It is fetched from the ImageManager API again on the next read."
+msgstr "Löscht die gecachten Bildmetadaten dieser Website. Sie werden beim nächsten Abruf erneut von der ImageManager API geladen."
+
+#: includes/class-settings.php
+msgid "Deletes the cached image metadata of all sites in the network. It is fetched from the ImageManager API again on the next read."
+msgstr "Löscht die gecachten Bildmetadaten aller Websites im Netzwerk. Sie werden beim nächsten Abruf erneut von der ImageManager API geladen."
+
+#: includes/class-settings.php
+msgid "Sorry, you are not allowed to clear the metadata cache."
+msgstr "Sie sind leider nicht berechtigt, den Metadaten-Cache zu leeren."
+
+#: includes/class-settings.php
+msgid "Metadata cache cleared."
+msgstr "Metadaten-Cache geleert."
+
+#. translators: %s: number of removed cache entries
+#: includes/class-settings.php
+msgid "Metadata cache cleared: %s cached image removed."
+msgid_plural "Metadata cache cleared: %s cached images removed."
+msgstr[0] "Metadaten-Cache geleert: %s gecachtes Bild entfernt."
+msgstr[1] "Metadaten-Cache geleert: %s gecachte Bilder entfernt."

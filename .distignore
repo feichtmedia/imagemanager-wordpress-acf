@@ -10,3 +10,6 @@ AGENTS.md
 CLAUDE.md
 README.md
 CONCEPT.md
+/dist
+/*.zip
+/release_notes.md

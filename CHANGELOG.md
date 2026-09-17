@@ -1,5 +1,61 @@
 # Changelog – FeichtMedia ImageManager for Advanced Custom Fields
 
+## [1.3.0] – 2026-09-17
+
+### Metadata cache management
+
+- Added: "Clear metadata cache" button as the last row of the "ACF Field" section. On a site settings page it flushes the current site (`admin-post.php`, `manage_options`), on the network settings page all sites (`network/edit.php`, `manage_network_options`); both run `FM_ImageManager_Settings::handle_flush_request()` (capability + nonce check) and redirect back with the number of removed entries, shown by `render_flush_notice()`. The button stays available while the network configuration is enforced. It submits a separate form printed on `admin_footer` via its `form` attribute, because the row sits inside the settings form and forms cannot be nested.
+- Added: Per-site cache key salt (option `feichtmedia_imagemanager_acf_cache_salt`, not a managed option) in `includes/helpers.php`. Cache keys are now `feichtmedia_imagemanager_acf_meta_{md5(salt . imageId)}` (`feichtmedia_imagemanager_get_metadata_cache_key()`), and the new `feichtmedia_imagemanager_flush_metadata_cache()` rotates the salt before deleting the transients. The salt is created on the first cached read, which also removes entries stored under the previous unsalted keys; `uninstall.php` deletes it.
+- Added: Translations for the new strings (`.pot` regenerated; `en_GB`, `de_DE`, `de_DE_formal`, `de_AT`, `de_CH` updated).
+- Updated: The metadata cache is now also flushed when `feichtmedia_imagemanager_acf_cache_enabled` or `feichtmedia_imagemanager_acf_cache_ttl` change, so disabling the cache leaves no entries behind and a new TTL applies to all entries.
+- Updated: The cache TTL setting is capped at 2,592,000 seconds (30 days): `FM_ImageManager_Settings::sanitize_ttl()` clamps saved values, the input has a `max` attribute, and the field description names the maximum.
+- Updated: `feichtmedia_imagemanager_delete_metadata_transients()`, `FM_ImageManager_Settings::flush_metadata_cache()` and `flush_network_metadata_cache()` return the number of removed entries.
+- Updated: `AGENTS.md` with a new "Metadata cache" section and updated options, multisite, performance, uninstall, and changelog documentation.
+- Fixed: A cache TTL of `0` ("no expiry") stored metadata transients without expiration, which WordPress autoloads on every request and never purges — on large sites this bloats the autoloaded options. The new `feichtmedia_imagemanager_get_metadata_cache_ttl()` maps `0`, and values above 30 days (which Memcached reads as an already expired Unix timestamp), to 30 days.
+- Fixed: Cache invalidation after project ID / domain changes had no effect with a persistent object cache (Redis/Memcached): the direct `$wpdb` query only reaches the options table, so stale metadata was served until the TTL expired. Rotating the cache key salt now invalidates entries in every cache backend.
+- Fixed: The cache TTL input was cut off for values with more than four digits (e.g. `2592000`), because WordPress core's `small-text` class limits number inputs to 65px (70px on mobile). `FM_ImageManager_Settings::render_cache_ttl_field()` now gives the input a `min-width` of 100px.
+
+### Multisite support
+
+- Added: Multisite support. All settings reads go through the new `FM_ImageManager_Core::get_setting()`, which resolves site vs. network scope: on multisite, network values (stored as site options under the same option names) act as a fallback for sites without their own value.
+- Added: Plugin-specific cache options (`feichtmedia_imagemanager_acf_cache_enabled`, `feichtmedia_imagemanager_acf_cache_ttl`) are registered as managed options via the `fm_imagemanager_managed_options` filter in `includes/class-settings.php`, so they are stored network-wide, write-locked while enforced, and rendered read-only on site settings pages.
+- Added: Lazy per-site consumer registration on multisite — the main file adds its basename to `$GLOBALS['fm_imagemanager_consumer_candidates']`, synced into each site's registry on `plugins_loaded` priority 20.
+- Added: `feichtmedia_imagemanager_delete_metadata_transients()` helper in `includes/helpers.php`, shared by `uninstall.php` and the new cache invalidation.
+- Added: Translations for all new network settings strings (`.pot` regenerated; `en_GB`, `de_DE`, `de_DE_formal`, `de_AT`, `de_CH` updated).
+- Updated: REST proxy gate in `feichtmedia-imagemanager-acf.php`, `FM_ImageManager_REST_Proxy::forward()`, `FM_ImageManager_ACF_Field_Image` (`render_field()`, `input_admin_enqueue_scripts()`, `format_value()`) and `includes/helpers.php` read settings via `FM_ImageManager_Core::get_setting()` instead of `get_option()`.
+- Updated: `AGENTS.md` with a new "Multisite" section and updated shared options, bootstrap order, and uninstall documentation.
+- Fixed: Uninstalling on multisite only cleaned up the site the uninstall ran on, leaving options — including the API key — on every other site. `uninstall.php` now runs the cleanup per site via `switch_to_blog()` and deletes the network options once no site has a consumer left.
+- Fixed: Network activation registered the plugin in the consumer registry of a single site only (and of no sites created later), so reference counting in `uninstall.php` failed on all other sites. Fixed by the lazy consumer sync.
+- Fixed: Cached metadata kept returning URLs with the old project ID / domain for up to one cache TTL after either setting changed. Metadata transients are now flushed on `add_option_`, `update_option_` and `delete_option_{project_id|domain}` (a site switching between the inherited network value and its own creates or removes the option, which never fires `update_option_*`) and, for network saves, on every site via the `fm_imagemanager_settings_updated` action.
+
+#### Core
+
+- Bumped Core component version `1.1.0` → `1.2.0` in `bootstrap.php`.
+- Added: Network settings page under Network Admin → Settings → FeichtMedia ImageManager (`register_network_options_page()`, `render_network_options_page()`, `save_network_options()` via `network_admin_edit_feichtmedia_imagemanager`). Renders all sections of the site settings page plus an "Enforce configuration network-wide" switch (`feichtmedia_imagemanager_network_enforce` site option). Values are sanitized with the callbacks registered via `register_setting()`; settings errors are carried across the redirect in a site transient.
+- Added: `managed_options()` registry (filterable via `fm_imagemanager_managed_options`) and the static accessors `get_setting()`, `is_network_enforced()`, `field_value()`, `field_disabled()`.
+- Added: Server-side write filter — `block_site_write()` on `pre_update_option_{$name}` for every managed option keeps the stored site value while the network configuration is enforced, so direct POSTs to `options.php` cannot bypass the disabled fields. While not enforced, a site without its own value keeps inheriting when the submitted value equals the network value, so always-posted fields (checkbox, TTL) do not pin inherited values on the first save of the site page.
+- Added: `fm_imagemanager_sync_consumers()` in `bootstrap.php` and the `fm_imagemanager_settings_updated` action fired after network saves.
+- Updated: While enforced, site settings pages show all fields disabled with the inherited network values, an info notice, and no submit button. The network API key is never printed on site settings pages (placeholder only). While not enforced, site text fields show only the site's own value, with the inherited network value as placeholder plus a hint — prefilling it would copy the network value into the site option on save. The incomplete-settings notice links super admins to the network page and tells site admins to contact their network administrator.
+- Fixed: `sanitize_domain()` fell back to the current site's option on invalid input, which would have copied the main site's domain into the network option. It now falls back to the value of the scope being saved.
+
+### Release workflow
+
+- Fixed: Plugin installs from WordPress.org (1.2.0–1.2.3) contained the release build artifacts `dist/` (a full duplicate of the plugin), `feichtmedia-imagemanager-acf.zip` and `release_notes.md`. Cause: `.github/workflows/release.yml` wrote them into the workspace, which `10up/action-wordpress-plugin-deploy` rsyncs into SVN trunk minus `.distignore`. The build now writes to `$RUNNER_TEMP`, and `.distignore` excludes `/dist`, `/*.zip` and `/release_notes.md` as a safety net.
+
+### Translations
+
+- Added: Translations of the plugin header strings (name, description, author, author URI) in all `.po` files (`en_GB`, `de_DE`, `de_DE_formal`, `de_AT`, `de_CH`).
+- Updated: `.pot` regenerated (line references only).
+- Updated: Bootstrap order and i18n rules in `AGENTS.md`, bootstrap order in `README.md`.
+- Fixed: Plugin strings on the settings pages and the ACF-missing notice stayed in English wherever ACF is not loaded — notably the network settings page when ACF is not active on the main site, because the network admin runs the main site's plugins. Cause: `feichtmedia-imagemanager-acf.php` returned on the ACF check before registering `load_plugin_textdomain()`, while Core renders its settings pages regardless. The textdomain is now registered before the ACF check.
+- Fixed: The "Configuration incomplete" notice in `FM_ImageManager_ACF_Field_Image::render_field()` was never translated: its msgid wraps the warning sign in `<span aria-hidden="true">`, but all `.po` files kept a msgid without the `<span>`. The `.po` entries now use the current msgid.
+
+### Documentation
+
+- Updated: `readme.txt` with the network setup, a new "Does the plugin support WordPress Multisite?" FAQ, and the new cache behaviour (clear button, 30-day TTL cap, automatic invalidation, multisite uninstall). The per-image WP-CLI command for clearing the cache was replaced, because salted cache keys can no longer be derived from the image ID alone.
+- Updated: `README.md` with new "Metadata cache" and "Multisite" sections and the multisite steps of the bootstrap order.
+- Updated: `package.json` version synced to the plugin version (was `1.1.0`).
+
 ## [1.2.3] – 2026-08-19
 
 - Verified: Compatibility with WordPress 7.1.

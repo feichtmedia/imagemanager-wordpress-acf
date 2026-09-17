@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Bump this only when class-imagemanager-core.php itself changes, and keep it in sync across all FM ImageManager plugins.
 $GLOBALS['fm_imagemanager_core_candidates']   = $GLOBALS['fm_imagemanager_core_candidates'] ?? [];
 $GLOBALS['fm_imagemanager_core_candidates'][] = [
-	'version' => '1.1.0',
+	'version' => '1.2.0',
 	'file'    => __DIR__ . '/class-imagemanager-core.php',
 ];
 
@@ -41,6 +41,32 @@ if ( ! function_exists( 'fm_imagemanager_register_consumer' ) ) {
 			update_option( 'feichtmedia_imagemanager_consumers', $consumers );
 		}
 	}
+}
+
+// Separate guard: older bundled bootstraps (Core < 1.2.0) already declare the helpers above.
+if ( ! function_exists( 'fm_imagemanager_sync_consumers' ) ) {
+
+	/**
+	 * Register all loaded consumer plugins on the current site (multisite only).
+	 *
+	 * The activation hook fires only once on network activation and never for sites
+	 * created later, so the per-site registry is filled lazily on each request instead.
+	 * Idempotent: the registry is autoloaded and only written when a basename is missing.
+	 * Plugins add their basename to $GLOBALS['fm_imagemanager_consumer_candidates']
+	 * before plugins_loaded priority 20.
+	 *
+	 * @return void
+	 */
+	function fm_imagemanager_sync_consumers(): void {
+		if ( ! is_multisite() ) {
+			return; // Single site: the activation hook is sufficient.
+		}
+		foreach ( $GLOBALS['fm_imagemanager_consumer_candidates'] ?? [] as $basename ) {
+			fm_imagemanager_register_consumer( $basename );
+		}
+	}
+
+	add_action( 'plugins_loaded', 'fm_imagemanager_sync_consumers', 20 );
 }
 
 if ( ! function_exists( 'fm_imagemanager_core_boot' ) ) {
