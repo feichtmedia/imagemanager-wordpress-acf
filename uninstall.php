@@ -49,8 +49,9 @@ function fm_imagemanager_acf_uninstall_site(): bool {
 	delete_option( 'feichtmedia_imagemanager_acf_cache_enabled' );
 	delete_option( 'feichtmedia_imagemanager_acf_cache_ttl' );
 
-	// 4) Always remove this plugin's own regenerable metadata transients.
+	// 4) Always remove this plugin's own regenerable metadata transients and their cache key salt.
 	feichtmedia_imagemanager_delete_metadata_transients();
+	delete_option( 'feichtmedia_imagemanager_acf_cache_salt' );
 
 	return ! empty( $consumers );
 }

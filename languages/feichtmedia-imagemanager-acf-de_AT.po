@@ -64,8 +64,8 @@ msgstr "Speichert Metadaten-Antworten der ImageManager API in WordPress-Transien
 msgid "Cache TTL"
 msgstr "Cache-TTL"
 
-msgid "How long API responses are cached, in seconds. Default: 3600 (1 hour). Set to 0 for no expiry."
-msgstr "Wie lange API-Antworten in Sekunden gecacht werden. Standard: 3600 (1 Stunde). 0 = kein Ablauf."
+msgid "How long API responses are cached, in seconds. Default: 3600 (1 hour). Maximum: 2592000 (30 days); 0 also uses the maximum."
+msgstr "Wie lange API-Antworten in Sekunden gecacht werden. Standard: 3600 (1 Stunde). Maximum: 2592000 (30 Tage); 0 verwendet ebenfalls das Maximum."
 
 msgid "Image"
 msgstr "Bild"
@@ -225,3 +225,34 @@ msgstr "Netzwerkweiter API-Schlüssel wird verwendet"
 #: includes/shared/imagemanager-core/class-imagemanager-core.php
 msgid "Leave empty to use the network-wide value."
 msgstr "Leer lassen, um den netzwerkweiten Wert zu verwenden."
+
+#: includes/class-settings.php
+msgid "Clear Cache"
+msgstr "Cache leeren"
+
+#: includes/class-settings.php
+msgid "Clear metadata cache"
+msgstr "Metadaten-Cache leeren"
+
+#: includes/class-settings.php
+msgid "Deletes the cached image metadata of this site. It is fetched from the ImageManager API again on the next read."
+msgstr "Löscht die gecachten Bildmetadaten dieser Website. Sie werden beim nächsten Abruf erneut von der ImageManager API geladen."
+
+#: includes/class-settings.php
+msgid "Deletes the cached image metadata of all sites in the network. It is fetched from the ImageManager API again on the next read."
+msgstr "Löscht die gecachten Bildmetadaten aller Websites im Netzwerk. Sie werden beim nächsten Abruf erneut von der ImageManager API geladen."
+
+#: includes/class-settings.php
+msgid "Sorry, you are not allowed to clear the metadata cache."
+msgstr "Sie sind leider nicht berechtigt, den Metadaten-Cache zu leeren."
+
+#: includes/class-settings.php
+msgid "Metadata cache cleared."
+msgstr "Metadaten-Cache geleert."
+
+#. translators: %s: number of removed cache entries
+#: includes/class-settings.php
+msgid "Metadata cache cleared: %s cached image removed."
+msgid_plural "Metadata cache cleared: %s cached images removed."
+msgstr[0] "Metadaten-Cache geleert: %s gecachtes Bild entfernt."
+msgstr[1] "Metadaten-Cache geleert: %s gecachte Bilder entfernt."

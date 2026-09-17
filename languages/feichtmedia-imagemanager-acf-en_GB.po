@@ -64,8 +64,8 @@ msgstr "Caches ImageManager API metadata responses in WordPress transients. Appl
 msgid "Cache TTL"
 msgstr "Cache TTL"
 
-msgid "How long API responses are cached, in seconds. Default: 3600 (1 hour). Set to 0 for no expiry."
-msgstr "How long API responses are cached, in seconds. Default: 3600 (1 hour). Set to 0 for no expiry."
+msgid "How long API responses are cached, in seconds. Default: 3600 (1 hour). Maximum: 2592000 (30 days); 0 also uses the maximum."
+msgstr "How long API responses are cached, in seconds. Default: 3600 (1 hour). Maximum: 2592000 (30 days); 0 also uses the maximum."
 
 msgid "Image"
 msgstr "Image"
@@ -225,3 +225,34 @@ msgstr "Using the network-wide API key"
 #: includes/shared/imagemanager-core/class-imagemanager-core.php
 msgid "Leave empty to use the network-wide value."
 msgstr "Leave empty to use the network-wide value."
+
+#: includes/class-settings.php
+msgid "Clear Cache"
+msgstr "Clear Cache"
+
+#: includes/class-settings.php
+msgid "Clear metadata cache"
+msgstr "Clear metadata cache"
+
+#: includes/class-settings.php
+msgid "Deletes the cached image metadata of this site. It is fetched from the ImageManager API again on the next read."
+msgstr "Deletes the cached image metadata of this site. It is fetched from the ImageManager API again on the next read."
+
+#: includes/class-settings.php
+msgid "Deletes the cached image metadata of all sites in the network. It is fetched from the ImageManager API again on the next read."
+msgstr "Deletes the cached image metadata of all sites in the network. It is fetched from the ImageManager API again on the next read."
+
+#: includes/class-settings.php
+msgid "Sorry, you are not allowed to clear the metadata cache."
+msgstr "Sorry, you are not allowed to clear the metadata cache."
+
+#: includes/class-settings.php
+msgid "Metadata cache cleared."
+msgstr "Metadata cache cleared."
+
+#. translators: %s: number of removed cache entries
+#: includes/class-settings.php
+msgid "Metadata cache cleared: %s cached image removed."
+msgid_plural "Metadata cache cleared: %s cached images removed."
+msgstr[0] "Metadata cache cleared: %s cached image removed."
+msgstr[1] "Metadata cache cleared: %s cached images removed."

@@ -102,9 +102,9 @@ function feichtmedia_imagemanager_map_image(array $data, string $group_id, strin
 /**
  * Fetch image metadata from the ImageManager API, with Transient caching.
  *
- * Cache key: feichtmedia_imagemanager_acf_meta_{md5(imageId)}, TTL controlled by the
- * plugin setting feichtmedia_imagemanager_acf_cache_ttl (default 3600 s). Caching can
- * be disabled entirely via feichtmedia_imagemanager_acf_cache_enabled.
+ * Cache key: see feichtmedia_imagemanager_get_metadata_cache_key(), TTL: see
+ * feichtmedia_imagemanager_get_metadata_cache_ttl(). Caching can be disabled
+ * entirely via feichtmedia_imagemanager_acf_cache_enabled.
  * On API error, returns minimal data built from locally known values so that
  * format_value() can still return a usable (if incomplete) result.
  *
@@ -114,8 +114,8 @@ function feichtmedia_imagemanager_map_image(array $data, string $group_id, strin
  * @return array Canonical metadata array (see feichtmedia_imagemanager_map_image()).
  */
 function feichtmedia_imagemanager_get_metadata(string $group_id, string $image_id, string $domain): array {
-	$cache_key     = 'feichtmedia_imagemanager_acf_meta_' . md5($image_id);
 	$cache_enabled = (bool) FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_acf_cache_enabled', 1);
+	$cache_key     = $cache_enabled ? feichtmedia_imagemanager_get_metadata_cache_key($image_id) : '';
 
 	if ($cache_enabled) {
 		$cached = get_transient($cache_key);
@@ -159,11 +159,67 @@ function feichtmedia_imagemanager_get_metadata(string $group_id, string $image_i
 	$meta = feichtmedia_imagemanager_map_image($data, $group_id, $image_id, $domain);
 
 	if ($cache_enabled) {
-		$ttl = (int) FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_acf_cache_ttl', 3600);
-		set_transient($cache_key, $meta, $ttl);
+		set_transient($cache_key, $meta, feichtmedia_imagemanager_get_metadata_cache_ttl());
 	}
 
 	return $meta;
+}
+
+/**
+ * Build the transient name for an image's cached metadata.
+ *
+ * Format: feichtmedia_imagemanager_acf_meta_{md5(salt . imageId)}. The per-site salt
+ * (option feichtmedia_imagemanager_acf_cache_salt) is rotated on every flush, which
+ * invalidates all entries at once — including those in a persistent object cache,
+ * where the query in feichtmedia_imagemanager_delete_metadata_transients() cannot
+ * reach them. A site without a salt is flushed first, so entries written before the
+ * salt existed (keyed by image ID only) do not linger in the options table.
+ *
+ * @param string $image_id Image filename (newFilename).
+ * @return string Transient name.
+ */
+function feichtmedia_imagemanager_get_metadata_cache_key(string $image_id): string {
+	// Internal per-site state, not a setting — read directly, never via get_setting().
+	$salt = (string) get_option('feichtmedia_imagemanager_acf_cache_salt', '');
+
+	if ('' === $salt) {
+		feichtmedia_imagemanager_flush_metadata_cache();
+		$salt = (string) get_option('feichtmedia_imagemanager_acf_cache_salt', '');
+	}
+
+	return 'feichtmedia_imagemanager_acf_meta_' . md5($salt . $image_id);
+}
+
+/**
+ * Resolve the effective metadata cache lifetime.
+ *
+ * Reads feichtmedia_imagemanager_acf_cache_ttl (default 3600 s) and caps it at 30 days.
+ * The cap also replaces 0 ("no expiry"): WordPress autoloads transients without
+ * expiration on every request and never purges them. 30 days is the longest lifetime
+ * Memcached accepts as relative — larger values are read as a Unix timestamp in the
+ * past, so the entry would expire immediately.
+ *
+ * @return int Lifetime in seconds, between 1 and MONTH_IN_SECONDS.
+ */
+function feichtmedia_imagemanager_get_metadata_cache_ttl(): int {
+	$ttl = (int) FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_acf_cache_ttl', 3600);
+
+	return ($ttl <= 0 || $ttl > MONTH_IN_SECONDS) ? MONTH_IN_SECONDS : $ttl;
+}
+
+/**
+ * Invalidate all cached image metadata of the current site.
+ *
+ * Rotates the cache key salt (see feichtmedia_imagemanager_get_metadata_cache_key()),
+ * then deletes the stored transients from the options table.
+ *
+ * @return int Number of cached images removed from the options table. Always 0 with a
+ *             persistent object cache, whose entries are invalidated but not deleted.
+ */
+function feichtmedia_imagemanager_flush_metadata_cache(): int {
+	update_option('feichtmedia_imagemanager_acf_cache_salt', wp_generate_password(12, false), true);
+
+	return feichtmedia_imagemanager_delete_metadata_transients();
 }
 
 /**
@@ -173,14 +229,25 @@ function feichtmedia_imagemanager_get_metadata(string $group_id, string $image_i
  * via the Transients API. Reads $wpdb->options at call time so it targets the
  * right table after switch_to_blog().
  *
- * @return void
+ * @return int Number of deleted transients (timeout rows not counted).
  */
-function feichtmedia_imagemanager_delete_metadata_transients(): void {
+function feichtmedia_imagemanager_delete_metadata_transients(): int {
 	global $wpdb;
 
+	$count = (int) $wpdb->query(
+		"DELETE FROM {$wpdb->options}
+		 WHERE option_name LIKE '\_transient\_feichtmedia\_imagemanager\_acf\_meta\_%'"
+	);
 	$wpdb->query(
 		"DELETE FROM {$wpdb->options}
-		 WHERE option_name LIKE '\_transient\_feichtmedia\_imagemanager\_acf\_meta\_%'
-		    OR option_name LIKE '\_transient\_timeout\_feichtmedia\_imagemanager\_acf\_meta\_%'"
+		 WHERE option_name LIKE '\_transient\_timeout\_feichtmedia\_imagemanager\_acf\_meta\_%'"
 	);
+
+	// Transients stored without expiry were autoloaded — drop the cached copy of all
+	// autoloaded options so a persistent object cache does not keep serving them.
+	if ($count > 0) {
+		wp_cache_delete('alloptions', 'options');
+	}
+
+	return $count;
 }

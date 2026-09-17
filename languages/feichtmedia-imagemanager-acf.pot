@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-16T16:14:58+02:00\n"
+"POT-Creation-Date: 2026-09-17T10:50:52+02:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: feichtmedia-imagemanager-acf\n"
@@ -182,28 +182,60 @@ msgstr ""
 msgid "An image from the FeichtMedia ImageManager"
 msgstr ""
 
-#: includes/class-settings.php:105
+#: includes/class-settings.php:135
+msgid "Sorry, you are not allowed to clear the metadata cache."
+msgstr ""
+
+#: includes/class-settings.php:172
+msgid "Metadata cache cleared."
+msgstr ""
+
+#. translators: %s: number of removed cache entries
+#: includes/class-settings.php:175
+#, php-format
+msgid "Metadata cache cleared: %s cached image removed."
+msgid_plural "Metadata cache cleared: %s cached images removed."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/class-settings.php:213
 msgid "ACF Field"
 msgstr ""
 
-#: includes/class-settings.php:112
+#: includes/class-settings.php:220
 msgid "Metadata Cache"
 msgstr ""
 
-#: includes/class-settings.php:120
+#: includes/class-settings.php:228
 msgid "Cache TTL"
 msgstr ""
 
-#: includes/class-settings.php:154
+#: includes/class-settings.php:236
+msgid "Clear Cache"
+msgstr ""
+
+#: includes/class-settings.php:270
 msgid "Enable metadata cache"
 msgstr ""
 
-#: includes/class-settings.php:157
+#: includes/class-settings.php:273
 msgid "Caches ImageManager API metadata responses in WordPress transients. Applies only to ACF field value reads (e.g. get_field(), GraphQL) — the image browser in the editor is not affected. Disable for debugging or when image metadata changes frequently."
 msgstr ""
 
-#: includes/class-settings.php:180
-msgid "How long API responses are cached, in seconds. Default: 3600 (1 hour). Set to 0 for no expiry."
+#: includes/class-settings.php:297
+msgid "How long API responses are cached, in seconds. Default: 3600 (1 hour). Maximum: 2592000 (30 days); 0 also uses the maximum."
+msgstr ""
+
+#: includes/class-settings.php:316
+msgid "Clear metadata cache"
+msgstr ""
+
+#: includes/class-settings.php:321
+msgid "Deletes the cached image metadata of all sites in the network. It is fetched from the ImageManager API again on the next read."
+msgstr ""
+
+#: includes/class-settings.php:323
+msgid "Deletes the cached image metadata of this site. It is fetched from the ImageManager API again on the next read."
 msgstr ""
 
 #: includes/shared/imagemanager-core/class-imagemanager-core.php:227
