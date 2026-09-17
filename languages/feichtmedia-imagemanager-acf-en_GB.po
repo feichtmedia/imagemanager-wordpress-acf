@@ -19,6 +19,26 @@ msgstr ""
 "X-Generator: FeichtMedia\n"
 "X-Domain: feichtmedia-imagemanager-acf\n"
 
+#. Plugin Name of the plugin
+#: feichtmedia-imagemanager-acf.php
+msgid "FeichtMedia ImageManager for Advanced Custom Fields"
+msgstr "FeichtMedia ImageManager for Advanced Custom Fields"
+
+#. Description of the plugin
+#: feichtmedia-imagemanager-acf.php
+msgid "ACF custom field type for the FeichtMedia ImageManager DAM. Editors pick images through a native WP-admin file browser; all API requests are proxied server-side so the API key never reaches the browser."
+msgstr "ACF custom field type for the FeichtMedia ImageManager DAM. Editors pick images through a native WP-admin file browser; all API requests are proxied server-side so the API key never reaches the browser."
+
+#. Author of the plugin
+#: feichtmedia-imagemanager-acf.php
+msgid "FeichtMedia"
+msgstr "FeichtMedia"
+
+#. Author URI of the plugin
+#: feichtmedia-imagemanager-acf.php
+msgid "https://www.feicht-media.de/"
+msgstr "https://www.feicht-media.de/"
+
 msgid "FeichtMedia ImageManager"
 msgstr "FeichtMedia ImageManager"
 
@@ -88,8 +108,8 @@ msgstr "Allow Null"
 msgid "Allow the selected image to be removed. Ignored when the field is required."
 msgstr "Allow the selected image to be removed. Ignored when the field is required."
 
-msgid "&#9888; Configuration incomplete. Please complete all settings under <a href=\"%s\">Settings &#8594; FeichtMedia ImageManager</a>."
-msgstr "&#9888; Configuration incomplete. Please complete all settings under <a href=\"%s\">Settings &#8594; FeichtMedia ImageManager</a>."
+msgid "<span aria-hidden=\"true\">&#9888;</span> Configuration incomplete. Please complete all settings under <a href=\"%s\">Settings &#8594; FeichtMedia ImageManager</a>."
+msgstr "<span aria-hidden=\"true\">&#9888;</span> Configuration incomplete. Please complete all settings under <a href=\"%s\">Settings &#8594; FeichtMedia ImageManager</a>."
 
 msgid "Add image"
 msgstr "Add image"

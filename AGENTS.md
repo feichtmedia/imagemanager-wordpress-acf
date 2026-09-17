@@ -58,9 +58,10 @@ feichtmedia-imagemanager-acf/
 plugins_loaded priority 5  → imagemanager-core boots (highest bundled version wins)
 plugins_loaded priority 10 → this plugin initialises:
     0. Add plugin_basename() to $GLOBALS['fm_imagemanager_consumer_candidates'] (before the ACF check)
-    1. ACF present? No → admin notice feichtmedia_imagemanager_acf_missing_notice(), return early.
-    2. Register add_action('init', …, 1) closure that calls load_plugin_textdomain()
-       (deferred — see "i18n rules"; priority 1 keeps it ahead of ACF's init:5 field-type registration)
+    1. Register add_action('init', …, 1) closure that calls load_plugin_textdomain()
+       (deferred — see "i18n rules"; priority 1 keeps it ahead of ACF's init:5 field-type registration;
+       before the ACF check, because the ACF-missing notice and the Core settings pages render without ACF)
+    2. ACF present? No → admin notice feichtmedia_imagemanager_acf_missing_notice(), return early.
     3. require helpers.php
     4. require class-acf-field-image.php → register on acf/include_field_types
     5. require class-settings.php → (new FM_ImageManager_Settings())->register()
@@ -268,7 +269,8 @@ Also, the `AGENTS.md` file must be reviewed and updated if necessary to reflect 
 - **No JS i18n pipeline.** All UI strings translated in PHP and passed to JS via `wp_localize_script` as `window.fmImageManager.strings`. The JS reads from that object — never calls `wp.i18n.__()`.
 - `wp_set_script_translations()` is **not used**.
 - `.po`/`.mo` files are the single source of truth for all translations (PHP and JS alike).
-- `load_plugin_textdomain()` is called from an `add_action('init', …, 1)` closure, never directly during `plugins_loaded` — calling it earlier triggers WordPress's "translation loading triggered too early" `_doing_it_wrong()` notice. Priority 1 keeps it ahead of ACF's `init:5` field-type registration (`acf/include_field_types`) so translated field labels still resolve.
+- `load_plugin_textdomain()` is called from an `add_action('init', …, 1)` closure, never directly during `plugins_loaded` — calling it earlier triggers WordPress's "translation loading triggered too early" `_doing_it_wrong()` notice. Priority 1 keeps it ahead of ACF's `init:5` field-type registration (`acf/include_field_types`) so translated field labels still resolve. The closure is registered **before** the ACF check: the Core settings pages render even when ACF is not loaded (e.g. the network admin runs the main site's active plugins, so ACF is missing there when it is only active on other sites), and the ACF-missing notice itself is translated.
+- After changing a msgid in code (including markup inside it), update the msgid **and** msgstr in every `.po` file, not only the `.pot` — a stale msgid silently falls back to English. Recompile with `npm run compile-languages`.
 
 Supported locales: `en_GB`, `de_DE`, `de_DE_formal`, `de_AT` (formal/Sie), `de_CH` (formal/Sie, no ß).
 Fallback for any other locale: en_US (automatic via gettext — no code needed).

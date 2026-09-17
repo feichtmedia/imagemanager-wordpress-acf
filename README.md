@@ -55,8 +55,8 @@ Optional integrations activate automatically when present:
 ```
 plugins_loaded priority 5  → imagemanager-core boots (highest bundled version wins)
 plugins_loaded priority 10 → this plugin initialises:
-    1. ACF present? No → show admin notice, return early.
-    2. Register add_action('init', …, 1) closure that calls load_plugin_textdomain() (deferred)
+    1. Register add_action('init', …, 1) closure that calls load_plugin_textdomain() (deferred, before the ACF check)
+    2. ACF present? No → show admin notice, return early.
     3. require helpers.php + class-acf-field-image.php → register on acf/include_field_types
     4. FM_ImageManager_Settings::register() (always)
     5. api_key option set? → FM_ImageManager_REST_Proxy::register()

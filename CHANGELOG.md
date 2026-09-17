@@ -42,6 +42,14 @@
 
 - Fixed: Plugin installs from WordPress.org (1.2.0–1.2.3) contained the release build artifacts `dist/` (a full duplicate of the plugin), `feichtmedia-imagemanager-acf.zip` and `release_notes.md`. Cause: `.github/workflows/release.yml` wrote them into the workspace, which `10up/action-wordpress-plugin-deploy` rsyncs into SVN trunk minus `.distignore`. The build now writes to `$RUNNER_TEMP`, and `.distignore` excludes `/dist`, `/*.zip` and `/release_notes.md` as a safety net.
 
+### Translations
+
+- Added: Translations of the plugin header strings (name, description, author, author URI) in all `.po` files (`en_GB`, `de_DE`, `de_DE_formal`, `de_AT`, `de_CH`).
+- Updated: `.pot` regenerated (line references only).
+- Updated: Bootstrap order and i18n rules in `AGENTS.md`, bootstrap order in `README.md`.
+- Fixed: Plugin strings on the settings pages and the ACF-missing notice stayed in English wherever ACF is not loaded — notably the network settings page when ACF is not active on the main site, because the network admin runs the main site's plugins. Cause: `feichtmedia-imagemanager-acf.php` returned on the ACF check before registering `load_plugin_textdomain()`, while Core renders its settings pages regardless. The textdomain is now registered before the ACF check.
+- Fixed: The "Configuration incomplete" notice in `FM_ImageManager_ACF_Field_Image::render_field()` was never translated: its msgid wraps the warning sign in `<span aria-hidden="true">`, but all `.po` files kept a msgid without the `<span>`. The `.po` entries now use the current msgid.
+
 ## [1.2.3] – 2026-08-19
 
 - Verified: Compatibility with WordPress 7.1.

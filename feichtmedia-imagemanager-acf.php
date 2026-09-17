@@ -39,17 +39,14 @@ add_action('plugins_loaded', function () {
     // Registered before the ACF check — the activation hook does not depend on ACF either.
     $GLOBALS['fm_imagemanager_consumer_candidates'][] = plugin_basename(__FILE__);
 
-    // 3a) Hard dependency: ACF. Without it nothing can be registered.
-    if (! class_exists('ACF')) {
-        add_action('admin_notices', 'feichtmedia_imagemanager_acf_missing_notice');
-        return;
-    }
-
-    // 3b) Translations. Deferred to the `init` hook — calling load_plugin_textdomain()
+    // 3a) Translations. Deferred to the `init` hook — calling load_plugin_textdomain()
     // any earlier (e.g. directly here on plugins_loaded) triggers WordPress's
     // "translation loading triggered too early" _doing_it_wrong() notice. Priority 1
     // ensures the textdomain is ready before ACF registers field types on init:5
     // (acf/include_field_types), so translated field labels are not missed.
+    // Registered before the ACF check: the ACF-missing notice and the Core settings
+    // pages (which render without ACF, e.g. in the network admin when ACF is not
+    // active on the main site) use this textdomain too.
     add_action('init', function () {
         load_plugin_textdomain(
             'feichtmedia-imagemanager-acf',
@@ -57,6 +54,12 @@ add_action('plugins_loaded', function () {
             dirname(plugin_basename(__FILE__)) . '/languages'
         );
     }, 1);
+
+    // 3b) Hard dependency: ACF. Without it nothing can be registered.
+    if (! class_exists('ACF')) {
+        add_action('admin_notices', 'feichtmedia_imagemanager_acf_missing_notice');
+        return;
+    }
 
     // 3c) Helpers + ACF field type.
     require_once FM_IMAGEMANAGER_ACF_PATH . 'includes/helpers.php';

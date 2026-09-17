@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-17T10:50:52+02:00\n"
+"POT-Creation-Date: 2026-09-17T11:20:43+02:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: feichtmedia-imagemanager-acf\n"
@@ -34,7 +34,7 @@ msgstr ""
 msgid "https://www.feicht-media.de/"
 msgstr ""
 
-#: feichtmedia-imagemanager-acf.php:93
+#: feichtmedia-imagemanager-acf.php:96
 msgid "FeichtMedia ImageManager for Advanced Custom Fields requires Advanced Custom Fields (ACF) to be installed and active."
 msgstr ""
 
@@ -222,19 +222,19 @@ msgstr ""
 msgid "Caches ImageManager API metadata responses in WordPress transients. Applies only to ACF field value reads (e.g. get_field(), GraphQL) — the image browser in the editor is not affected. Disable for debugging or when image metadata changes frequently."
 msgstr ""
 
-#: includes/class-settings.php:297
+#: includes/class-settings.php:298
 msgid "How long API responses are cached, in seconds. Default: 3600 (1 hour). Maximum: 2592000 (30 days); 0 also uses the maximum."
 msgstr ""
 
-#: includes/class-settings.php:316
+#: includes/class-settings.php:317
 msgid "Clear metadata cache"
 msgstr ""
 
-#: includes/class-settings.php:321
+#: includes/class-settings.php:322
 msgid "Deletes the cached image metadata of all sites in the network. It is fetched from the ImageManager API again on the next read."
 msgstr ""
 
-#: includes/class-settings.php:323
+#: includes/class-settings.php:324
 msgid "Deletes the cached image metadata of this site. It is fetched from the ImageManager API again on the next read."
 msgstr ""
 
