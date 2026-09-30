@@ -1,6 +1,6 @@
 # Changelog – FeichtMedia ImageManager for Advanced Custom Fields
 
-## [Unreleased]
+## [1.3.1] – 2026-09-30
 
 - Added: GitHub workflow `.github/workflows/version-check.yml` (status check "Version check"), which checks the version numbers on every pull request with the new `.github/scripts/check-version.sh`: the `Version:` header and `FM_IMAGEMANAGER_ACF_VERSION` in `feichtmedia-imagemanager-acf.php`, `Stable tag:` and the newest `== Changelog ==` entry in `readme.txt`, `version` in `package.json` and the newest `## [x.y.z]` header in `CHANGELOG.md` must be identical. Pull requests into `main` must also have no `[Unreleased]` section left and must raise the version compared to `main`. To block merging, "Version check" has to be a required status check for `main`.
 - Updated: `release.yml` runs `check-version.sh` instead of its inline version check, so a release tag now also fails if `package.json`, the `readme.txt` changelog or `CHANGELOG.md` do not match the tag or an `[Unreleased]` section is left.
