@@ -31,8 +31,11 @@ feichtmedia-imagemanager-acf/
 ├── package.json                              ← plugin metadata only (no build pipeline)
 ├── .distignore                               ← WordPress.org deployment exclusions
 ├── .github/
+│   ├── scripts/
+│   │   └── check-version.sh                 ← version check used by both workflows, also runs locally (see "Versioning")
 │   └── workflows/
-│       └── release.yml                       ← PHP syntax check, version consistency check, language compilation, GitHub release ZIP, WP.org SVN deploy (the deploy rsyncs the whole workspace minus .distignore into SVN trunk — write build outputs to $RUNNER_TEMP, never into the workspace)
+│       ├── release.yml                       ← PHP syntax check, version check, language compilation, GitHub release ZIP, WP.org SVN deploy (the deploy rsyncs the whole workspace minus .distignore into SVN trunk — write build outputs to $RUNNER_TEMP, never into the workspace)
+│       └── version-check.yml                 ← version check on every pull request (status check "Version check")
 ├── includes/
 │   ├── shared/
 │   │   └── imagemanager-core/               ← IDENTICAL copy in every FM ImageManager plugin
@@ -79,7 +82,7 @@ plugins_loaded priority 20 → Core: write lock on all managed options (the mana
 
 | Constant                        | Value                                           | Configurable?   |
 | ------------------------------- | ----------------------------------------------- | --------------- |
-| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.3.0'`                                       | bump on release |
+| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.3.1'`                                       | bump on release |
 | `FM_IMAGEMANAGER_ACF_PATH`      | `plugin_dir_path(__FILE__)`                     | no              |
 | `FM_IMAGEMANAGER_ACF_URL`       | `plugin_dir_url(__FILE__)`                      | no              |
 | `FM_IMAGEMANAGER_API_URL`       | `'https://imagemanager.feicht-media.de/api/v2'` | no              |
@@ -231,12 +234,16 @@ Entries always start with the action verb (Added, Fixed, Updated, Removed, …).
 
 This project has **two independent version numbers**:
 
-**Plugin version** (`MAJOR.MINOR.PATCH`) — tracks the plugin itself. On every release, update all four locations simultaneously:
+**Plugin version** (`MAJOR.MINOR.PATCH`) — tracks the plugin itself. On every release, update all six locations simultaneously:
 
 1. `feichtmedia-imagemanager-acf.php` → `Version:` header
 2. `feichtmedia-imagemanager-acf.php` → `FM_IMAGEMANAGER_ACF_VERSION` constant
 3. `readme.txt` → `Stable tag:`
-4. `CHANGELOG.md` → new version header + entries
+4. `readme.txt` → new `= x.y.z – YYYY-MM-DD =` entry at the top of `== Changelog ==`
+5. `package.json` → `version`
+6. `CHANGELOG.md` → new version header + entries
+
+`.github/scripts/check-version.sh` enforces this. `version-check.yml` runs it on every pull request: all six locations must carry the same version, while an `## [Unreleased]` section above the newest `CHANGELOG.md` version is allowed. Pull requests into `main` must also have no `[Unreleased]` section left and a higher version than `main`. `release.yml` runs it on the release tag, which must match the version. When changing a version location (file, format, or a new location), update the variables and parsing at the top of the script and the "Pre-release checklist" in `README.md`.
 
 **Core component version** — tracks `includes/shared/imagemanager-core/` only. Stored in `bootstrap.php` (`$GLOBALS['fm_imagemanager_core_candidates'][]`). Bump this **only** when `class-imagemanager-core.php` itself changes, and keep it in sync across **all** FeichtMedia ImageManager plugins (the highest bundled version wins at runtime). Core version changes are logged in `CHANGELOG.md` under a separate `### Core` sub-section within the relevant plugin version entry (`#### Core` below the related `###` section when the entry is grouped into topic sections, as in `[1.3.0]`) — they are **not** tracked in `readme.txt`.
 
@@ -247,6 +254,17 @@ After each change, the `CHANGELOG.md` file must be updated with a new entry desc
 For public documentation, a more simple and user-friendly changelog entry is also added to the `readme.txt` file under the "Changelog" section. Use the same version header (number and date) as in the `CHANGELOG.md`. The description in the `readme.txt` should be concise and focused on the user-facing impact of the change, while the `CHANGELOG.md` can include more technical details.
 
 Also, the `AGENTS.md` file must be reviewed and updated if necessary to reflect the change and ensure that AI coding agents have the most up-to-date information about the codebase. This is crucial for maintaining the productivity of AI coding agents and ensuring they can effectively assist with development tasks.
+
+---
+
+## Branches & merging
+
+- `main` is the released state; `dev` is the permanent working branch. Small fixes are committed directly on `dev`; larger work goes through a `feat/…` / `fix/…` branch off `dev`, deleted after merging.
+- Every merge (branch → `dev`, `dev` → `main`) is a merge commit: `git merge --no-ff` locally, "Create a merge commit" on GitHub. Squash only when a branch consists mostly of throwaway WIP commits.
+- Commit messages and PR titles follow Conventional Commits (`fix(modal): correct Safari flex height`), with `Fixes #N` in the commit body.
+- On `dev` and its branches, changes only collect under `## [Unreleased]` in `CHANGELOG.md` — no version bump, no `readme.txt` change.
+- **Release:** one commit `chore(release): vX.Y.Z` on `dev` turns `[Unreleased]` into the version header, bumps all version locations (see "Versioning") and adds the `readme.txt` Changelog / Upgrade Notice entries → PR `dev` → `main` with the same title, merge commit → `git tag vX.Y.Z` on `main` + `git push origin vX.Y.Z` (triggers `release.yml`) → fast-forward `dev`: `git switch dev && git fetch origin && git merge --ff-only origin/main && git push`.
+- **Hotfix:** commit directly on `main` including the PATCH bump, then merge `main` into `dev`.
 
 ---
 
@@ -290,7 +308,7 @@ Fallback for any other locale: en_US (automatic via gettext — no code needed).
 
 **Stored value:** the image ID (`newFilename`) only — never the full URL.
 
-**Backward compatibility:** values containing `/` are legacy relative URLs. The regex extracts the last two path segments as `groupId` / `imageId` (handles filter-prefix variants too). No data migration needed.
+**Backward compatibility:** values containing `/` are legacy relative URLs. The regex extracts the last two path segments as `groupId` / `imageId` (handles filter-prefix variants and values without a leading slash, e.g. `wordpress/image.jpg`). No data migration needed.
 
 ---
 

@@ -1,5 +1,13 @@
 # Changelog – FeichtMedia ImageManager for Advanced Custom Fields
 
+## [1.3.1] – 2026-09-30
+
+- Added: GitHub workflow `.github/workflows/version-check.yml` (status check "Version check"), which checks the version numbers on every pull request with the new `.github/scripts/check-version.sh`: the `Version:` header and `FM_IMAGEMANAGER_ACF_VERSION` in `feichtmedia-imagemanager-acf.php`, `Stable tag:` and the newest `== Changelog ==` entry in `readme.txt`, `version` in `package.json` and the newest `## [x.y.z]` header in `CHANGELOG.md` must be identical. Pull requests into `main` must also have no `[Unreleased]` section left and must raise the version compared to `main`. To block merging, "Version check" has to be a required status check for `main`.
+- Updated: `release.yml` runs `check-version.sh` instead of its inline version check, so a release tag now also fails if `package.json`, the `readme.txt` changelog or `CHANGELOG.md` do not match the tag or an `[Unreleased]` section is left.
+- Updated: `README.md` (release checklist, new "Version check on pull requests" section) and `AGENTS.md` (directory structure, versioning) list all six version locations, including `package.json` and the `readme.txt` changelog entry.
+- Updated: `AGENTS.md` with a new "Branches & merging" section: `dev` as working branch, merge commits instead of squash merges, Conventional Commits, `[Unreleased]` entries on `dev`, and the release and hotfix steps.
+- Fixed: Legacy values without a leading slash (e.g. `wordpress/image.jpg`) did not match the regex in `feichtmedia_imagemanager_parse_value()`, which required a `/` before the group segment, so they fell through to the bare-ID branch and rendered as `/{projectId}/wordpress/image.jpg`. The group segment may now also start the value; `update_value()` consequently reduces such values to the bare image ID on save, as it already did for `/wordpress/image.jpg`.
+
 ## [1.3.0] – 2026-09-17
 
 ### Metadata cache management

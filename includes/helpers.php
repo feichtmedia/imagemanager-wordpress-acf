@@ -18,7 +18,8 @@ if (! defined('ABSPATH')) {
  *
  * Handles both the current format (image ID only) and the legacy format
  * (relative URL: /{groupId}/{imageId} or with filter segments prepended,
- * e.g. /filters:blur(5)/wordpress/20260101-080000-image.jpg).
+ * e.g. /filters:blur(5)/wordpress/20260101-080000-image.jpg). The leading
+ * slash is optional ({groupId}/{imageId}).
  *
  * The regex always extracts the last two path segments as groupId / imageId,
  * which correctly handles any number of leading filter segments.
@@ -28,8 +29,11 @@ if (! defined('ABSPATH')) {
  */
 function feichtmedia_imagemanager_parse_value(string $value): array {
 	if (str_contains($value, '/')) {
-		// Legacy relative URL — extract the last two path segments.
-		if (preg_match('#/([^/]+)/([^/]+)$#', $value, $matches)) {
+		// Legacy relative URL — extract the last two path segments. The groupId
+		// segment may start the string: values without a leading slash
+		// ("wordpress/image.jpg") must not fall through to the bare-ID branch, which
+		// would prepend the project ID to the whole path.
+		if (preg_match('#(?:^|/)([^/]+)/([^/]+)$#', $value, $matches)) {
 			return [
 				'format'  => 'legacy',
 				'groupId' => $matches[1],

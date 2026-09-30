@@ -1,0 +1,40 @@
+name: Version check
+
+# Runs on every pull request without path filters: a required check that is
+# skipped by a path filter stays pending and blocks the pull request.
+on:
+  pull_request:
+    # `edited` re-runs the check when the target branch of a pull request
+    # changes, e.g. from dev to main.
+    types: [opened, synchronize, reopened, edited]
+
+# ----------------------------------------------------------------------------
+# Project settings – adjust these when reusing the workflow for another plugin.
+# ----------------------------------------------------------------------------
+env:
+  # Pull requests into this branch must be release-ready: no [Unreleased]
+  # section in CHANGELOG.md and a higher version than on the branch.
+  RELEASE_BRANCH: main
+  # Runs JavaScript actions pinned to older Node versions on Node 24.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  version-check:
+    # Name of the status check to select as required in the branch rules
+    name: Version check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check version numbers
+        run: |
+          if [ "$GITHUB_BASE_REF" = "$RELEASE_BRANCH" ]; then
+            git fetch --no-tags --depth=1 origin "$RELEASE_BRANCH"
+            bash .github/scripts/check-version.sh --release --newer-than-ref FETCH_HEAD
+          else
+            bash .github/scripts/check-version.sh
+          fi

@@ -4,7 +4,7 @@ Tags: acf, advanced custom fields, imagemanager, dam, digital asset management
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.3.0
+Stable tag: 1.3.1
 License: GPL-2.0-or-later
 
 Integrates the FeichtMedia ImageManager DAM into Advanced Custom Fields (ACF) as a native field type.
@@ -189,7 +189,7 @@ Data transmitted to the FeichtMedia ImageManager API with each request:
 * **API key** – sent in the Authorization header to authenticate the request.
 * **Project ID** – part of the request URL for images in the preview.
 * **Image ID** – included in the URL for single-image metadata requests.
-* **WordPress site URL** – transmitted automatically as part of the HTTP User-Agent header (e.g. `WordPress/7.0; https://example.com FeichtMedia-ImageManager-ACF/1.3.0`).
+* **WordPress site URL** – transmitted automatically as part of the HTTP User-Agent header (e.g. `WordPress/7.0; https://example.com FeichtMedia-ImageManager-ACF/1.3.1`).
 * **IP address of the WordPress server** – logged by the ImageManager API as the origin of the HTTP request.
 
 No visitor IP addresses, post content, or other personally identifiable information is transmitted. All requests originate from the WordPress server, not from the visitor's browser.
@@ -200,6 +200,9 @@ No visitor IP addresses, post content, or other personally identifiable informat
 == Changelog ==
 
 Only plugin-level changes are listed here. Changes to the internal Shared Core Component (`includes/shared/imagemanager-core/`) are documented in `CHANGELOG.md` under a separate `Core` sub-section of the relevant version entry.
+
+= 1.3.1 – 2026-09-30 =
+* Fixed: Legacy field values stored as a relative URL without a leading slash (e.g. `wordpress/image.jpg`, for example from a former plain text field) produced a broken image URL with the project ID placed in front of the whole path. They are now recognised like values with a leading slash.
 
 = 1.3.0 – 2026-09-17 =
 * Added: WordPress Multisite support. Network administrators can configure the plugin for all sites under Network Admin → Settings → FeichtMedia ImageManager and optionally enforce this configuration, so site administrators can no longer change it. Sites without their own settings use the network values.
@@ -256,6 +259,9 @@ Only plugin-level changes are listed here. Changes to the internal Shared Core C
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.3.1 =
+Fixes broken image URLs for legacy field values stored without a leading slash (e.g. `wordpress/image.jpg`). No database changes. Safe to update.
 
 = 1.3.0 =
 Adds WordPress Multisite support with network-wide settings and a button to clear the metadata cache. Cached image metadata is cleared once after the update. A cache TTL of 0 now means 30 days instead of no expiry. Stored field values are unchanged. Safe to update.
