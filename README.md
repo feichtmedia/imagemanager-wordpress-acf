@@ -91,7 +91,7 @@ Only whitelisted query params are forwarded upstream (see `FM_ImageManager_REST_
 - **Class:** `FM_ImageManager_ACF_Field_Image` (`includes/class-acf-field-image.php`)
 - **Field settings:** `return_format` (`relative_url` | `absolute_url` | `metadata`), `required` (built-in), `allow_null` (rendered on the **Validation** tab via `render_field_validation_settings()`)
 - **Stored value:** image ID (`newFilename`) only — never a full URL
-- **Backward compat:** values containing `/` are legacy relative URLs; the regex extracts the last two path segments as `groupId`/`imageId`, handling filter-prefix variants too
+- **Backward compat:** values containing `/` are legacy relative URLs; the regex extracts the last two path segments as `groupId`/`imageId`, handling filter-prefix variants and values without a leading slash (`wordpress/image.jpg`) too
 
 ### Why keep `allow_null` next to `required`?
 

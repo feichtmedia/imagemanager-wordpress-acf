@@ -290,7 +290,7 @@ Fallback for any other locale: en_US (automatic via gettext — no code needed).
 
 **Stored value:** the image ID (`newFilename`) only — never the full URL.
 
-**Backward compatibility:** values containing `/` are legacy relative URLs. The regex extracts the last two path segments as `groupId` / `imageId` (handles filter-prefix variants too). No data migration needed.
+**Backward compatibility:** values containing `/` are legacy relative URLs. The regex extracts the last two path segments as `groupId` / `imageId` (handles filter-prefix variants and values without a leading slash, e.g. `wordpress/image.jpg`). No data migration needed.
 
 ---
 
