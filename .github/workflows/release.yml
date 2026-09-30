@@ -50,19 +50,10 @@ jobs:
 
       - name: Verify version consistency
         if: github.event_name == 'push'
-        run: |
-          VERSION="${{ steps.version.outputs.tag }}"
-          HEADER=$(grep -m1 'Version:' feichtmedia-imagemanager-acf.php | grep -oP '\d+\.\d+\.\d+')
-          CONSTANT=$(grep 'FM_IMAGEMANAGER_ACF_VERSION' feichtmedia-imagemanager-acf.php | grep -oP "'\K\d+\.\d+\.\d+")
-          README=$(grep 'Stable tag:' readme.txt | grep -oP '\d+\.\d+\.\d+')
-          echo "Tag:      $VERSION"
-          echo "Header:   $HEADER"
-          echo "Constant: $CONSTANT"
-          echo "readme:   $README"
-          if [ "$HEADER" != "$VERSION" ] || [ "$CONSTANT" != "$VERSION" ] || [ "$README" != "$VERSION" ]; then
-            echo "::error::Version mismatch – update all four version locations before tagging."
-            exit 1
-          fi
+        env:
+          VERSION: ${{ steps.version.outputs.tag }}
+        # Same check as on pull requests (version-check.yml), plus the tag
+        run: bash .github/scripts/check-version.sh --release --expect "$VERSION"
 
       - name: Compile language files
         run: npm run compile-languages

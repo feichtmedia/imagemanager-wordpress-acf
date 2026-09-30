@@ -35,6 +35,8 @@ Optional integrations activate automatically when present:
 | `package.json`                                                  | npm script: `compile-languages` → `wp i18n make-mo`                                  |
 | `.distignore`                                                   | Excludes for WordPress.org SVN deployment                                            |
 | `.github/workflows/release.yml`                                 | Automated release pipeline                                                           |
+| `.github/workflows/version-check.yml`                           | Version check on pull requests (status check "Version check")                        |
+| `.github/scripts/check-version.sh`                              | Version check used by both workflows, also runs locally                              |
 
 ---
 
@@ -155,18 +157,22 @@ Releases are fully automated via `.github/workflows/release.yml`. No manual step
 
 ### Pre-release checklist
 
-Update all four version locations to the new version number before tagging:
+Update all version locations to the new version number in the release commit:
 
-| Location                           | Field                                                    |
-| ---------------------------------- | -------------------------------------------------------- |
-| `feichtmedia-imagemanager-acf.php` | `Version:` plugin header                                 |
-| `feichtmedia-imagemanager-acf.php` | `FM_IMAGEMANAGER_ACF_VERSION` constant                   |
-| `readme.txt`                       | `Stable tag:`                                            |
-| `CHANGELOG.md`                     | Add `## [X.Y.Z] – YYYY-MM-DD` section with release notes |
+| Location                           | Field                                                                 |
+| ---------------------------------- | --------------------------------------------------------------------- |
+| `feichtmedia-imagemanager-acf.php` | `Version:` plugin header                                              |
+| `feichtmedia-imagemanager-acf.php` | `FM_IMAGEMANAGER_ACF_VERSION` constant                                |
+| `readme.txt`                       | `Stable tag:`                                                         |
+| `readme.txt`                       | Add `= X.Y.Z – YYYY-MM-DD =` entry at the top of `== Changelog ==`    |
+| `package.json`                     | `version`                                                             |
+| `CHANGELOG.md`                     | Rename `## [Unreleased]` to `## [X.Y.Z] – YYYY-MM-DD` (release notes) |
 
-The workflow verifies the first three automatically and aborts if they don't match the tag. The `CHANGELOG.md` section is used as the GitHub release description.
+The [version check](#version-check-on-pull-requests) verifies all of them. The `CHANGELOG.md` section is used as the GitHub release description.
 
 ### Trigger a release
+
+Merge the release commit into `main` via pull request (the [version check](#version-check-on-pull-requests) must pass), then tag that commit on `main` and push the tag:
 
 ```bash
 git tag v1.2.3
@@ -176,13 +182,13 @@ git push origin v1.2.3
 ### What the workflow does
 
 1. PHP syntax check (`php -l` on all PHP files)
-2. Version consistency check across plugin header, constant, and `readme.txt`
+2. Version check (`.github/scripts/check-version.sh --release --expect X.Y.Z`): all version locations match the tag, and `CHANGELOG.md` has no `[Unreleased]` section left
 3. Language file compilation (`npm run compile-languages` → WP-CLI `make-mo`)
 4. Release ZIP — files excluded per `.distignore`
 5. GitHub release — body auto-populated from the matching `## [X.Y.Z]` section in `CHANGELOG.md`
 6. WordPress.org SVN deployment via `10up/action-wordpress-plugin-deploy`
 
-Steps 5 and 6 only fire on tag pushes; `workflow_dispatch` skips them.
+Steps 2, 5 and 6 only fire on tag pushes; `workflow_dispatch` skips them.
 
 **Required GitHub Secrets** (Settings → Secrets and variables → Actions):
 
@@ -190,6 +196,22 @@ Steps 5 and 6 only fire on tag pushes; `workflow_dispatch` skips them.
 | -------------- | ----------------------------------------------------- |
 | `SVN_USERNAME` | Your wordpress.org username                           |
 | `SVN_PASSWORD` | Your wordpress.org password (or application password) |
+
+### Version check on pull requests
+
+`.github/workflows/version-check.yml` runs on every pull request (status check "Version check") and calls `.github/scripts/check-version.sh`, which the release workflow uses as well:
+
+- Every pull request: the six version locations from the [pre-release checklist](#pre-release-checklist) are valid `MAJOR.MINOR.PATCH` versions and identical. An `## [Unreleased]` section above the newest version in `CHANGELOG.md` is allowed, so changes on `dev` can collect there without a version bump.
+- Pull requests into `main` additionally: there is no `[Unreleased]` section left, and the version is higher than the `Version:` header on `main`.
+
+The check only blocks merging if "Version check" is a required status check in the branch rules of `main` (GitHub → Settings → Rules → Rulesets, "Require status checks to pass"). The workflow has no path filter on purpose: a required check that is skipped by a path filter stays pending and blocks the pull request.
+
+Run the check locally from the plugin root before opening a release pull request (needs `jq`):
+
+```bash
+git fetch origin main
+.github/scripts/check-version.sh --release --newer-than-ref origin/main
+```
 
 ---
 

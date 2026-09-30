@@ -31,8 +31,11 @@ feichtmedia-imagemanager-acf/
 ├── package.json                              ← plugin metadata only (no build pipeline)
 ├── .distignore                               ← WordPress.org deployment exclusions
 ├── .github/
+│   ├── scripts/
+│   │   └── check-version.sh                 ← version check used by both workflows, also runs locally (see "Versioning")
 │   └── workflows/
-│       └── release.yml                       ← PHP syntax check, version consistency check, language compilation, GitHub release ZIP, WP.org SVN deploy (the deploy rsyncs the whole workspace minus .distignore into SVN trunk — write build outputs to $RUNNER_TEMP, never into the workspace)
+│       ├── release.yml                       ← PHP syntax check, version check, language compilation, GitHub release ZIP, WP.org SVN deploy (the deploy rsyncs the whole workspace minus .distignore into SVN trunk — write build outputs to $RUNNER_TEMP, never into the workspace)
+│       └── version-check.yml                 ← version check on every pull request (status check "Version check")
 ├── includes/
 │   ├── shared/
 │   │   └── imagemanager-core/               ← IDENTICAL copy in every FM ImageManager plugin
@@ -231,12 +234,16 @@ Entries always start with the action verb (Added, Fixed, Updated, Removed, …).
 
 This project has **two independent version numbers**:
 
-**Plugin version** (`MAJOR.MINOR.PATCH`) — tracks the plugin itself. On every release, update all four locations simultaneously:
+**Plugin version** (`MAJOR.MINOR.PATCH`) — tracks the plugin itself. On every release, update all six locations simultaneously:
 
 1. `feichtmedia-imagemanager-acf.php` → `Version:` header
 2. `feichtmedia-imagemanager-acf.php` → `FM_IMAGEMANAGER_ACF_VERSION` constant
 3. `readme.txt` → `Stable tag:`
-4. `CHANGELOG.md` → new version header + entries
+4. `readme.txt` → new `= x.y.z – YYYY-MM-DD =` entry at the top of `== Changelog ==`
+5. `package.json` → `version`
+6. `CHANGELOG.md` → new version header + entries
+
+`.github/scripts/check-version.sh` enforces this. `version-check.yml` runs it on every pull request: all six locations must carry the same version, while an `## [Unreleased]` section above the newest `CHANGELOG.md` version is allowed. Pull requests into `main` must also have no `[Unreleased]` section left and a higher version than `main`. `release.yml` runs it on the release tag, which must match the version. When changing a version location (file, format, or a new location), update the variables and parsing at the top of the script and the "Pre-release checklist" in `README.md`.
 
 **Core component version** — tracks `includes/shared/imagemanager-core/` only. Stored in `bootstrap.php` (`$GLOBALS['fm_imagemanager_core_candidates'][]`). Bump this **only** when `class-imagemanager-core.php` itself changes, and keep it in sync across **all** FeichtMedia ImageManager plugins (the highest bundled version wins at runtime). Core version changes are logged in `CHANGELOG.md` under a separate `### Core` sub-section within the relevant plugin version entry (`#### Core` below the related `###` section when the entry is grouped into topic sections, as in `[1.3.0]`) — they are **not** tracked in `readme.txt`.
 
