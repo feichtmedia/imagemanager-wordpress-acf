@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Updated: `AGENTS.md` with a new "Branches & merging" section: `dev` as working branch, merge commits instead of squash merges, Conventional Commits, `[Unreleased]` entries on `dev`, and the release and hotfix steps.
 - Fixed: Legacy values without a leading slash (e.g. `wordpress/image.jpg`) did not match the regex in `feichtmedia_imagemanager_parse_value()`, which required a `/` before the group segment, so they fell through to the bare-ID branch and rendered as `/{projectId}/wordpress/image.jpg`. The group segment may now also start the value; `update_value()` consequently reduces such values to the bare image ID on save, as it already did for `/wordpress/image.jpg`.
 
 ## [1.3.0] – 2026-09-17

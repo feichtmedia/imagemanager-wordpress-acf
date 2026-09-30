@@ -250,6 +250,17 @@ Also, the `AGENTS.md` file must be reviewed and updated if necessary to reflect 
 
 ---
 
+## Branches & merging
+
+- `main` is the released state; `dev` is the permanent working branch. Small fixes are committed directly on `dev`; larger work goes through a `feat/…` / `fix/…` branch off `dev`, deleted after merging.
+- Every merge (branch → `dev`, `dev` → `main`) is a merge commit: `git merge --no-ff` locally, "Create a merge commit" on GitHub. Squash only when a branch consists mostly of throwaway WIP commits.
+- Commit messages and PR titles follow Conventional Commits (`fix(modal): correct Safari flex height`), with `Fixes #N` in the commit body.
+- On `dev` and its branches, changes only collect under `## [Unreleased]` in `CHANGELOG.md` — no version bump, no `readme.txt` change.
+- **Release:** one commit `chore(release): vX.Y.Z` on `dev` turns `[Unreleased]` into the version header, bumps all version locations (see "Versioning") and adds the `readme.txt` Changelog / Upgrade Notice entries → PR `dev` → `main` with the same title, merge commit → `git tag vX.Y.Z` on `main` + `git push origin vX.Y.Z` (triggers `release.yml`) → fast-forward `dev`: `git switch dev && git fetch origin && git merge --ff-only origin/main && git push`.
+- **Hotfix:** commit directly on `main` including the PATCH bump, then merge `main` into `dev`.
+
+---
+
 ## Code standards
 
 - Follow [WordPress Coding Standards](https://developer.wordpress.org/coding-standards/) for PHP, JS, and CSS.
