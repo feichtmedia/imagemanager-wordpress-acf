@@ -4,7 +4,7 @@ Tags: acf, advanced custom fields, imagemanager, dam, digital asset management
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.3.1
+Stable tag: 1.3.2
 License: GPL-2.0-or-later
 
 Integrates the FeichtMedia ImageManager DAM into Advanced Custom Fields (ACF) as a native field type.
@@ -81,6 +81,30 @@ The plugin accesses the ImageManager read-only. For the file browser and metadat
 The `*:read` permission (read access to all resources) covers all of the above with a single entry and is the recommended choice if your ImageManager account supports wildcard permissions.
 
 API keys that only grant write permissions (`image:create`, `image:update`, etc.) will result in 403 errors in the file browser and must not be used.
+
+A 403 error in the file browser can also come from WordPress itself, if the logged-in user is not allowed to use the file browser. See "Who can use the file browser?".
+
+= Who can use the file browser? =
+
+Every logged-in user who can edit content in the WordPress admin:
+
+* users with the `edit_posts` capability,
+* users who can edit posts of any post type that has an admin screen, for example with `edit_pages` or the capability of a custom post type,
+* users who can edit or manage the terms of any taxonomy that has an admin screen.
+
+This includes roles that are built from the capabilities of individual post types, for example with PublishPress Capabilities or Members. Subscribers and logged-out visitors cannot use the file browser, because it shows the whole image library of your ImageManager project.
+
+A user without access sees the message "Sorry, you are not allowed to do that." in the file browser. The requests to `/wp-json/feichtmedia/imagemanager/v2/…` then return a 403 error with the code `rest_forbidden`. A 403 error with a different response comes from the ImageManager API, see "Which API key permissions are required?".
+
+Fields on screens that require a capability outside this rule, for example an ACF options page with its own capability or a field on the user profile, need the filter `feichtmedia_imagemanager_acf_proxy_permission`. It receives the result of the check above and the current `WP_REST_Request`. To also allow users with the capability of your options page:
+
+`add_filter( 'feichtmedia_imagemanager_acf_proxy_permission', fn( $allowed ) => $allowed || current_user_can( 'manage_site_settings' ) );`
+
+The filter can also narrow the rule, for example to users who can upload files:
+
+`add_filter( 'feichtmedia_imagemanager_acf_proxy_permission', fn( $allowed ) => $allowed && current_user_can( 'upload_files' ) );`
+
+Only the boolean `true` grants access. Any other return value denies it.
 
 = Is the API key transmitted to the browser? =
 
@@ -189,7 +213,7 @@ Data transmitted to the FeichtMedia ImageManager API with each request:
 * **API key** – sent in the Authorization header to authenticate the request.
 * **Project ID** – part of the request URL for images in the preview.
 * **Image ID** – included in the URL for single-image metadata requests.
-* **WordPress site URL** – transmitted automatically as part of the HTTP User-Agent header (e.g. `WordPress/7.0; https://example.com FeichtMedia-ImageManager-ACF/1.3.1`).
+* **WordPress site URL** – transmitted automatically as part of the HTTP User-Agent header (e.g. `WordPress/7.0; https://example.com FeichtMedia-ImageManager-ACF/1.3.2`).
 * **IP address of the WordPress server** – logged by the ImageManager API as the origin of the HTTP request.
 
 No visitor IP addresses, post content, or other personally identifiable information is transmitted. All requests originate from the WordPress server, not from the visitor's browser.
@@ -200,6 +224,10 @@ No visitor IP addresses, post content, or other personally identifiable informat
 == Changelog ==
 
 Only plugin-level changes are listed here. Changes to the internal Shared Core Component (`includes/shared/imagemanager-core/`) are documented in `CHANGELOG.md` under a separate `Core` sub-section of the relevant version entry.
+
+= 1.3.2 – 2026-10-06 =
+* Added: Filter `feichtmedia_imagemanager_acf_proxy_permission` to change who can use the file browser, for example for fields on options pages or user profiles that require other capabilities.
+* Fixed: Users whose role does not include the `edit_posts` capability could not use the file browser and saw "Sorry, you are not allowed to do that." instead of their images. This affected roles that can only edit pages or custom post types, for example roles created with PublishPress Capabilities or Members. The file browser is now available to every user who can edit content of any post type or taxonomy in the WordPress admin.
 
 = 1.3.1 – 2026-09-30 =
 * Fixed: Legacy field values stored as a relative URL without a leading slash (e.g. `wordpress/image.jpg`, for example from a former plain text field) produced a broken image URL with the project ID placed in front of the whole path. They are now recognised like values with a leading slash.
@@ -259,6 +287,9 @@ Only plugin-level changes are listed here. Changes to the internal Shared Core C
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.3.2 =
+Fixes the file browser being blocked for roles without the `edit_posts` capability, e.g. roles that can only edit pages or custom post types. Every user who can edit content in the admin can now browse the image library. No database changes. Safe to update.
 
 = 1.3.1 =
 Fixes broken image URLs for legacy field values stored without a leading slash (e.g. `wordpress/image.jpg`). No database changes. Safe to update.

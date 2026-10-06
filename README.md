@@ -44,7 +44,7 @@ Optional integrations activate automatically when present:
 
 | Constant                        | Value                                           |
 | ------------------------------- | ----------------------------------------------- |
-| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.3.1'` (bump on every release)               |
+| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.3.2'` (bump on every release)               |
 | `FM_IMAGEMANAGER_ACF_PATH`      | `plugin_dir_path(__FILE__)`                     |
 | `FM_IMAGEMANAGER_ACF_URL`       | `plugin_dir_url(__FILE__)`                      |
 | `FM_IMAGEMANAGER_API_URL`       | `'https://imagemanager.feicht-media.de/api/v2'` |
@@ -73,7 +73,11 @@ plugins_loaded priority 20 → Core: write lock on all managed options
 ## REST proxy
 
 Namespace: `feichtmedia/imagemanager/v2`  
-All routes are GET-only and require `edit_posts` capability.
+All routes are GET-only and share `FM_ImageManager_REST_Proxy::check_permission()` as `permission_callback`.
+
+Allowed is every logged-in user who may edit content in the admin: `edit_posts`, the `edit_posts` capability of any post type with `show_ui`, or `edit_terms` / `manage_terms` of any taxonomy with `show_ui`. This is the rule of `WP_REST_Block_Types_Controller::check_read_permission()`, with `show_ui` instead of `show_in_rest` (ACF fields also sit on post types without REST support) and with taxonomies (term screens). Subscribers get a 403, logged-out requests a 401.
+
+The result passes through the filter `feichtmedia_imagemanager_acf_proxy_permission` (`bool $allowed`, `WP_REST_Request $request`), e.g. for fields on options pages or profile screens that require other capabilities. Only a boolean `true` grants access.
 
 | WP REST route              | Upstream                          |
 | -------------------------- | --------------------------------- |

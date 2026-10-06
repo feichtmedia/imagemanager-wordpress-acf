@@ -82,7 +82,7 @@ plugins_loaded priority 20 → Core: write lock on all managed options (the mana
 
 | Constant                        | Value                                           | Configurable?   |
 | ------------------------------- | ----------------------------------------------- | --------------- |
-| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.3.1'`                                       | bump on release |
+| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.3.2'`                                       | bump on release |
 | `FM_IMAGEMANAGER_ACF_PATH`      | `plugin_dir_path(__FILE__)`                     | no              |
 | `FM_IMAGEMANAGER_ACF_URL`       | `plugin_dir_url(__FILE__)`                      | no              |
 | `FM_IMAGEMANAGER_API_URL`       | `'https://imagemanager.feicht-media.de/api/v2'` | no              |
@@ -315,7 +315,10 @@ Fallback for any other locale: en_US (automatic via gettext — no code needed).
 ## WP REST proxy (`/wp-json/feichtmedia/imagemanager/v2/…`)
 
 - Namespace: `feichtmedia/imagemanager/v2`
-- All routes: `GET` only, `permission_callback` → `current_user_can('edit_posts')`.
+- All routes: `GET` only, `permission_callback` → `FM_ImageManager_REST_Proxy::check_permission()`.
+- **Permission rule:** every logged-in user who may edit content in the admin — `edit_posts`, the `edit_posts` capability of any post type with `show_ui`, or `edit_terms` / `manage_terms` of any taxonomy with `show_ui`. Modelled on `WP_REST_Block_Types_Controller::check_read_permission()`; `show_ui` instead of `show_in_rest` because ACF fields also sit on post types without REST support. Subscribers → 403, logged out → 401. Do not replace it with a check against one object (post ID): the field also sits in ACF blocks, on term, profile and options screens and in unsaved objects.
+- **Filter:** `feichtmedia_imagemanager_acf_proxy_permission` (`bool $allowed`, `WP_REST_Request $request`) changes the result in both directions. Only a boolean `true` grants access — the REST server would treat any other value except `false`, `null` and `WP_Error` as allowed.
+- **Cost of the check:** it runs on every proxy request, and each `current_user_can()` call runs the `map_meta_cap` and `user_has_cap` filters (measured 50–190 µs per call with PublishPress Capabilities + Permissions active, 2 µs without). Keep the order in `current_user_can_edit_content()`: `is_user_logged_in()` first (logged out: no call), then `edit_posts` (one call, as before), then the remaining capabilities, each listed once and those stored in `WP_User::$allcaps` first (other allowed users: two calls, independent of the number of post types). `$allcaps` only sets the order — never decide from it, because filters grant and revoke capabilities at runtime. Never cache the result across requests: a cached grant would outlive a role change.
 - Only whitelisted query params forwarded upstream (see class for the lists).
 - API key injected server-side from `wp_options` — **never sent to the browser**.
 - Timeout: 15 s.
