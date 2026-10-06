@@ -1,6 +1,6 @@
 # Changelog – FeichtMedia ImageManager for Advanced Custom Fields
 
-## [Unreleased]
+## [1.3.2] – 2026-10-06
 
 - Added: Filter `feichtmedia_imagemanager_acf_proxy_permission` in `FM_ImageManager_REST_Proxy::check_permission()`, which receives the result of the capability check and the `WP_REST_Request`. Sites can widen the rule (fields on options pages or profile screens that require other capabilities) or narrow it. Only a boolean `true` grants access.
 - Updated: `readme.txt` FAQ with a new entry on who can use the file browser, including the filter, and a pointer from the API key permissions entry, because a 403 in the file browser has two possible causes. `README.md` and `AGENTS.md` describe the new permission rule.

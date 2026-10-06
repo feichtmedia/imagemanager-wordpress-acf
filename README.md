@@ -44,7 +44,7 @@ Optional integrations activate automatically when present:
 
 | Constant                        | Value                                           |
 | ------------------------------- | ----------------------------------------------- |
-| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.3.1'` (bump on every release)               |
+| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.3.2'` (bump on every release)               |
 | `FM_IMAGEMANAGER_ACF_PATH`      | `plugin_dir_path(__FILE__)`                     |
 | `FM_IMAGEMANAGER_ACF_URL`       | `plugin_dir_url(__FILE__)`                      |
 | `FM_IMAGEMANAGER_API_URL`       | `'https://imagemanager.feicht-media.de/api/v2'` |
