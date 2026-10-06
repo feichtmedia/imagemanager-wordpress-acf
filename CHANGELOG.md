@@ -1,5 +1,11 @@
 # Changelog – FeichtMedia ImageManager for Advanced Custom Fields
 
+## [Unreleased]
+
+- Added: Filter `feichtmedia_imagemanager_acf_proxy_permission` in `FM_ImageManager_REST_Proxy::check_permission()`, which receives the result of the capability check and the `WP_REST_Request`. Sites can widen the rule (fields on options pages or profile screens that require other capabilities) or narrow it. Only a boolean `true` grants access.
+- Updated: `readme.txt` FAQ with a new entry on who can use the file browser, including the filter, and a pointer from the API key permissions entry, because a 403 in the file browser has two possible causes. `README.md` and `AGENTS.md` describe the new permission rule.
+- Fixed: Users whose role has no `edit_posts` capability got `403 rest_forbidden` on all four REST proxy routes and could not select an image, typically roles built from the capabilities of pages or custom post types, e.g. with PublishPress Capabilities or Members — reported in [issue #5](https://github.com/feichtmedia/imagemanager-wordpress-acf/issues/5). Cause: `FM_ImageManager_REST_Proxy::check_permission()` only checked `edit_posts`, the capability of the post type `post`. It now allows every logged-in user who may edit posts of any post type, or edit or manage terms of any taxonomy, that has an admin UI (`show_ui`); subscribers and logged-out requests stay locked out. The check runs on every proxy request, so it lists each capability once and tests the ones stored for the user first: roles with `edit_posts` still need one `current_user_can()` call, other allowed users two, logged-out requests none.
+
 ## [1.3.1] – 2026-09-30
 
 - Added: GitHub workflow `.github/workflows/version-check.yml` (status check "Version check"), which checks the version numbers on every pull request with the new `.github/scripts/check-version.sh`: the `Version:` header and `FM_IMAGEMANAGER_ACF_VERSION` in `feichtmedia-imagemanager-acf.php`, `Stable tag:` and the newest `== Changelog ==` entry in `readme.txt`, `version` in `package.json` and the newest `## [x.y.z]` header in `CHANGELOG.md` must be identical. Pull requests into `main` must also have no `[Unreleased]` section left and must raise the version compared to `main`. To block merging, "Version check" has to be a required status check for `main`.

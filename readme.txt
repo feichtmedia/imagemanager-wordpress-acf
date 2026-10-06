@@ -82,6 +82,30 @@ The `*:read` permission (read access to all resources) covers all of the above w
 
 API keys that only grant write permissions (`image:create`, `image:update`, etc.) will result in 403 errors in the file browser and must not be used.
 
+A 403 error in the file browser can also come from WordPress itself, if the logged-in user is not allowed to use the file browser. See "Who can use the file browser?".
+
+= Who can use the file browser? =
+
+Every logged-in user who can edit content in the WordPress admin:
+
+* users with the `edit_posts` capability,
+* users who can edit posts of any post type that has an admin screen, for example with `edit_pages` or the capability of a custom post type,
+* users who can edit or manage the terms of any taxonomy that has an admin screen.
+
+This includes roles that are built from the capabilities of individual post types, for example with PublishPress Capabilities or Members. Subscribers and logged-out visitors cannot use the file browser, because it shows the whole image library of your ImageManager project.
+
+A user without access sees the message "Sorry, you are not allowed to do that." in the file browser. The requests to `/wp-json/feichtmedia/imagemanager/v2/…` then return a 403 error with the code `rest_forbidden`. A 403 error with a different response comes from the ImageManager API, see "Which API key permissions are required?".
+
+Fields on screens that require a capability outside this rule, for example an ACF options page with its own capability or a field on the user profile, need the filter `feichtmedia_imagemanager_acf_proxy_permission`. It receives the result of the check above and the current `WP_REST_Request`. To also allow users with the capability of your options page:
+
+`add_filter( 'feichtmedia_imagemanager_acf_proxy_permission', fn( $allowed ) => $allowed || current_user_can( 'manage_site_settings' ) );`
+
+The filter can also narrow the rule, for example to users who can upload files:
+
+`add_filter( 'feichtmedia_imagemanager_acf_proxy_permission', fn( $allowed ) => $allowed && current_user_can( 'upload_files' ) );`
+
+Only the boolean `true` grants access. Any other return value denies it.
+
 = Is the API key transmitted to the browser? =
 
 No. All requests to the ImageManager are routed through a server-side WP REST API proxy. The API key is read exclusively on the server from the WordPress database and is never visible in the browser or in browser network traffic.

@@ -87,12 +87,100 @@ class FM_ImageManager_REST_Proxy {
 	}
 
 	/**
-	 * Verify the current user has edit_posts capability.
+	 * Check whether the current user may use the proxy.
+	 *
+	 * The file browser does not belong to a single post: the field also sits in ACF
+	 * blocks, on term screens and in objects that are not saved yet, so there is no
+	 * object to check a capability against. Allowed is who may edit content
+	 * somewhere in the admin, see current_user_can_edit_content().
+	 *
+	 * @param WP_REST_Request $request Incoming request.
+	 * @return bool
+	 */
+	public function check_permission(WP_REST_Request $request): bool {
+		/**
+		 * Filters whether the current user may use the REST proxy of the file browser.
+		 *
+		 * Widen the rule for fields on screens that require other capabilities
+		 * (options pages, user profiles), or narrow it. The proxy serves the whole
+		 * image library of the ImageManager project.
+		 *
+		 * @param bool            $allowed Whether the user may edit posts of a post type or terms of a taxonomy with an admin UI.
+		 * @param WP_REST_Request $request Incoming request.
+		 */
+		$allowed = apply_filters('feichtmedia_imagemanager_acf_proxy_permission', $this->current_user_can_edit_content(), $request);
+
+		// Only true grants access. The REST server denies on false, null and WP_Error
+		// only, so a value such as 0 returned by a callback would let the request pass.
+		return true === $allowed;
+	}
+
+	/**
+	 * Check whether the current user may edit content the field can be placed on.
+	 *
+	 * Follows WP_REST_Block_Types_Controller::check_read_permission(): `edit_posts`,
+	 * or the `edit_posts` capability of any post type. Two differences: post types
+	 * are selected by `show_ui` instead of `show_in_rest`, because ACF fields also
+	 * sit on post types without REST support, and taxonomies with an admin UI count
+	 * as well (term screens).
+	 *
+	 * This runs on every proxy request, and each current_user_can() call runs the
+	 * `map_meta_cap` and `user_has_cap` filters that role and permission plugins hook
+	 * into. The order of the checks keeps the number of calls low:
+	 *
+	 *  - Logged-out requests are answered without any call.
+	 *  - Roles with `edit_posts` need one call, as before.
+	 *  - Other allowed users usually need two: the capabilities stored for the user
+	 *    are checked first, independent of how many post types are registered.
+	 *  - Only users without access run through all capabilities, each one once.
 	 *
 	 * @return bool
 	 */
-	public function check_permission(): bool {
-		return current_user_can('edit_posts');
+	private function current_user_can_edit_content(): bool {
+		if (! is_user_logged_in()) {
+			return false;
+		}
+
+		if (current_user_can('edit_posts')) {
+			return true;
+		}
+
+		$caps = $this->get_edit_capabilities();
+
+		// The stored capabilities only set the order. current_user_can() stays the
+		// authority, because filters grant and revoke capabilities at runtime.
+		$caps = array_intersect_key($caps, array_filter(wp_get_current_user()->allcaps)) + $caps;
+
+		foreach (array_keys($caps) as $cap) {
+			if (current_user_can($cap)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Collect the capabilities that allow editing posts or terms in the admin.
+	 *
+	 * @return array<string, true> Capability names as keys, so that a capability shared by several post types or taxonomies is listed once.
+	 */
+	private function get_edit_capabilities(): array {
+		$caps = [];
+
+		foreach (get_post_types(['show_ui' => true], 'objects') as $post_type) {
+			$caps[$post_type->cap->edit_posts] = true;
+		}
+
+		foreach (get_taxonomies(['show_ui' => true], 'objects') as $taxonomy) {
+			$caps[$taxonomy->cap->edit_terms]   = true;
+			$caps[$taxonomy->cap->manage_terms] = true;
+		}
+
+		// Already checked by the caller.
+		unset($caps['edit_posts']);
+
+		return $caps;
 	}
 
 	// --- Route callbacks ---------------------------------------------------
