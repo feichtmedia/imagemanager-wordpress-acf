@@ -26,6 +26,8 @@ Optional integrations activate automatically when present:
 | `includes/shared/imagemanager-core/class-imagemanager-core.php` | Shared + network options pages, option registration, setting scope resolution        |
 | `includes/class-settings.php`                                   | Plugin-specific settings section (cache options, "Clear metadata cache" button)      |
 | `includes/class-rest-proxy.php`                                 | WP REST proxy to ImageManager API                                                    |
+| `includes/class-api-client.php`                                 | Single entry point for all API requests: timeouts, per-request limits, throttled log |
+| `includes/class-circuit-breaker.php`                            | Shared API failure state; skips API calls for 60 s after 3 failures in a row         |
 | `includes/class-acf-field-image.php`                            | ACF field type `imagemanager_image`                                                  |
 | `includes/class-graphql.php`                                    | WPGraphQL for ACF v2.x integration (optional)                                        |
 | `includes/helpers.php`                                          | Value parser, URL builder, API mapper, metadata fetch + cache (key, TTL, flush)      |
@@ -44,11 +46,20 @@ Optional integrations activate automatically when present:
 
 | Constant                        | Value                                           |
 | ------------------------------- | ----------------------------------------------- |
-| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.3.2'` (bump on every release)               |
+| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.4.0'` (bump on every release)               |
 | `FM_IMAGEMANAGER_ACF_PATH`      | `plugin_dir_path(__FILE__)`                     |
 | `FM_IMAGEMANAGER_ACF_URL`       | `plugin_dir_url(__FILE__)`                      |
 | `FM_IMAGEMANAGER_API_URL`       | `'https://imagemanager.feicht-media.de/api/v2'` |
 | `FM_IMAGEMANAGER_DASHBOARD_URL` | `'https://imagemanager.feicht-media.de'`        |
+
+Optional, defined in `wp-config.php` to override the API timeouts (seconds, see [API failures](#api-failures-fail-soft)):
+
+| Constant                                    | Default |
+| ------------------------------------------- | ------- |
+| `FM_IMAGEMANAGER_ACF_API_CONNECT_TIMEOUT`   | `2`     |
+| `FM_IMAGEMANAGER_ACF_API_TIMEOUT`           | `3`     |
+| `FM_IMAGEMANAGER_ACF_PROXY_CONNECT_TIMEOUT` | `3`     |
+| `FM_IMAGEMANAGER_ACF_PROXY_TIMEOUT`         | `10`    |
 
 ---
 
@@ -60,7 +71,7 @@ plugins_loaded priority 10 → this plugin initialises:
     0. Add plugin_basename() to $GLOBALS['fm_imagemanager_consumer_candidates'] (before the ACF check)
     1. Register add_action('init', …, 1) closure that calls load_plugin_textdomain() (deferred, before the ACF check)
     2. ACF present? No → show admin notice, return early.
-    3. require helpers.php + class-acf-field-image.php → register on acf/include_field_types
+    3. require helpers.php, class-circuit-breaker.php, class-api-client.php + class-acf-field-image.php → register on acf/include_field_types
     4. FM_ImageManager_Settings::register() (always)
     5. FM_ImageManager_Core::get_setting('…_api_key') set? → FM_ImageManager_REST_Proxy::register()
     6. register_graphql_acf_field_type() exists? → FM_ImageManager_GraphQL::register()
@@ -87,7 +98,7 @@ The result passes through the filter `feichtmedia_imagemanager_acf_proxy_permiss
 | `/categories/{categoryId}` | `/api/v2/categories/{categoryId}` |
 
 The API key is injected server-side (resolved via `FM_ImageManager_Core::get_setting()`) and never sent to the browser.  
-Only whitelisted query params are forwarded upstream (see `FM_ImageManager_REST_Proxy::PARAM_WHITELIST`). Timeout: 15 s.
+Only whitelisted query params are forwarded upstream (see `FM_ImageManager_REST_Proxy::PARAM_WHITELIST`), `limit` capped at 100; route params are taken from the URL only. Requests go through `FM_ImageManager_API_Client` with 3 s connect / 10 s total timeout and the circuit breaker; upstream failures answer 502/503/504 with a translated `message` that the file browser shows (see [API failures](#api-failures-fail-soft)).
 
 ---
 
@@ -116,9 +127,28 @@ To prevent the two from contradicting each other, **`required` always wins**: a 
 
 Only the `metadata` return format is cached (Transients). All cache functions live in `includes/helpers.php`:
 
-- **Key:** `feichtmedia_imagemanager_acf_meta_{md5(salt . imageId)}`. The salt is a per-site option (`feichtmedia_imagemanager_acf_cache_salt`, not a setting) and is rotated on every flush, which invalidates entries in every cache backend — including a persistent object cache (Redis/Memcached) that a `$wpdb` query cannot reach.
+- **Key:** `feichtmedia_imagemanager_acf_meta_{md5('v2|' . salt . imageId)}`. `v2|` keeps the stale-if-error format apart from the bare arrays of 1.3.x, which a downgrade would otherwise return as field values; entries of 1.3.x are still read until they expire. The salt is a per-site option (`feichtmedia_imagemanager_acf_cache_salt`, not a setting) and is rotated on every flush, which invalidates entries in every cache backend — including a persistent object cache (Redis/Memcached) that a `$wpdb` query cannot reach.
 - **TTL:** `feichtmedia_imagemanager_acf_cache_ttl` (default `3600`), capped at 30 days. `0` maps to the cap — never pass `0` to `set_transient()` (autoloaded, never purged) and never exceed 30 days (Memcached reads it as a Unix timestamp).
 - **Flush:** `feichtmedia_imagemanager_flush_metadata_cache()` rotates the salt and deletes the transient rows. It runs automatically when project ID, domain, or the cache options change, and via the "Clear metadata cache" button (site page: current site; network page: all sites).
+- **Stale-if-error:** entries are `['meta' => …, 'expires' => …]`. They are fresh for the TTL, but the transient is stored for `feichtmedia_imagemanager_get_metadata_stale_ttl()` (default and max. 30 days, filter `feichtmedia_imagemanager_acf_stale_ttl`), so a failed refresh returns the last known metadata. Without an entry, only the URLs are known (everything else `null`/`0`). Failures are never cached, and neither is a `data` object without any of the mapped fields. A flush also removes this fallback; with the cache disabled there is none.
+
+---
+
+## API failures (fail-soft)
+
+A slow or failing ImageManager API must not take a site down (incident 2026-11-23: the API hung after a server update, and every site using the plugin blocked its PHP-FPM workers until nginx answered with 504). All API requests go through `FM_ImageManager_API_Client::get()`:
+
+| Mechanism | Behaviour | Configuration |
+| --- | --- | --- |
+| Timeouts | `render` (field values): 2 s connect / 3 s total. `proxy` (file browser): 3 s / 10 s | Constants (see [Constants](#constants)), filter `feichtmedia_imagemanager_acf_api_timeouts` (`$timeouts`, `$context`) |
+| Per-request limits | All API calls of one PHP request share the total timeout as a budget (each call at least 1 s, so at most ~4 s per page view, also with a slow but answering API). After a timeout or connection error, no further API call. Off on WP-CLI | — |
+| Circuit breaker | After 3 consecutive failures (transport error, 3xx, 5xx, 429, 2xx without JSON), API calls are skipped for 60 s; then one request probes, success closes the breaker. Site transient, network-wide on multisite | Filters `feichtmedia_imagemanager_acf_circuit_breaker_threshold`, `feichtmedia_imagemanager_acf_circuit_breaker_cooldown` |
+| Stale-if-error | Last known metadata for up to 30 days after the last successful fetch, then URLs only | Filter `feichtmedia_imagemanager_acf_stale_ttl` |
+| Logging | PHP error log, at most one failure entry per minute; breaker opening and recovery always | Filter `feichtmedia_imagemanager_acf_log_api_errors`, action `feichtmedia_imagemanager_acf_api_error` (`WP_Error`, `$path`, `$context`) |
+
+Sequential page views with a hanging API: requests 1–3 take ~3 s each (one attempt each), from the 4th at normal speed. With a DROP rule (connection never established) the connect timeout ends each attempt after 2 s. Redirects are not followed (they would resend the API key).
+
+**Testing an outage:** block the API host on a test server (e.g. `iptables -A OUTPUT -d <API IP> -j DROP`) or lower the timeouts there. Watch the PHP error log for lines starting with `FeichtMedia ImageManager for ACF:`. Check the breaker state with `wp eval 'var_dump( FM_ImageManager_Circuit_Breaker::get_state() );'` and reset it with `wp eval 'delete_site_transient( FM_ImageManager_Circuit_Breaker::STATE_KEY );'`.
 
 ---
 

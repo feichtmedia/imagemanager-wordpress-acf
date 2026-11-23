@@ -45,7 +45,9 @@ feichtmedia-imagemanager-acf/
 │   ├── class-acf-field-image.php            ← ACF field type "imagemanager_image"
 │   ├── class-graphql.php                    ← WPGraphQL resolvers (String + ImageManagerImage)
 │   ├── class-rest-proxy.php                 ← WP REST proxy to ImageManager API
-│   └── helpers.php                          ← stateless: URL builder, value parser, mapper, metadata fetch + cache (key, TTL, flush)
+│   ├── class-api-client.php                 ← single entry point for all API requests: timeouts, per-request limits, throttled logging
+│   ├── class-circuit-breaker.php            ← shared API failure state (site transient), opens after consecutive failures
+│   └── helpers.php                          ← stateless: URL builder, value parser, mapper, metadata fetch + cache (key, TTL, stale TTL, flush)
 ├── assets/                                  ← runtime assets shipped with the plugin (subfolders per asset type)
 │   ├── js/acf-imagemanager-field.js         ← file browser modal, field UI, REST calls
 │   └── css/acf-imagemanager-field.css       ← field + modal styling (WP 7 admin)
@@ -65,7 +67,7 @@ plugins_loaded priority 10 → this plugin initialises:
        (deferred — see "i18n rules"; priority 1 keeps it ahead of ACF's init:5 field-type registration;
        before the ACF check, because the ACF-missing notice and the Core settings pages render without ACF)
     2. ACF present? No → admin notice feichtmedia_imagemanager_acf_missing_notice(), return early.
-    3. require helpers.php
+    3. require helpers.php, class-circuit-breaker.php, class-api-client.php
     4. require class-acf-field-image.php → register on acf/include_field_types
     5. require class-settings.php → (new FM_ImageManager_Settings())->register()
     6. if FM_ImageManager_Core::get_setting('…_api_key') set → require class-rest-proxy.php → FM_ImageManager_REST_Proxy::register()
@@ -82,11 +84,20 @@ plugins_loaded priority 20 → Core: write lock on all managed options (the mana
 
 | Constant                        | Value                                           | Configurable?   |
 | ------------------------------- | ----------------------------------------------- | --------------- |
-| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.3.2'`                                       | bump on release |
+| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.4.0'`                                       | bump on release |
 | `FM_IMAGEMANAGER_ACF_PATH`      | `plugin_dir_path(__FILE__)`                     | no              |
 | `FM_IMAGEMANAGER_ACF_URL`       | `plugin_dir_url(__FILE__)`                      | no              |
 | `FM_IMAGEMANAGER_API_URL`       | `'https://imagemanager.feicht-media.de/api/v2'` | no              |
 | `FM_IMAGEMANAGER_DASHBOARD_URL` | `'https://imagemanager.feicht-media.de'`        | no              |
+
+Optional constants, defined by the site in `wp-config.php` (never by the plugin), read by `FM_ImageManager_API_Client::get_timeouts()`; see "API client & fail-soft":
+
+| Constant                                    | Default | Meaning                                         |
+| ------------------------------------------- | ------- | ----------------------------------------------- |
+| `FM_IMAGEMANAGER_ACF_API_CONNECT_TIMEOUT`   | `2`     | Connect timeout (s), `render` context            |
+| `FM_IMAGEMANAGER_ACF_API_TIMEOUT`           | `3`     | Total timeout (s), `render` context              |
+| `FM_IMAGEMANAGER_ACF_PROXY_CONNECT_TIMEOUT` | `3`     | Connect timeout (s), `proxy` context (file browser) |
+| `FM_IMAGEMANAGER_ACF_PROXY_TIMEOUT`         | `10`    | Total timeout (s), `proxy` context               |
 
 ---
 
@@ -124,11 +135,43 @@ The two settings are registered and rendered by `FM_ImageManager_Settings` (the 
 
 Only the `metadata` return format is cached (see "Performance rules"). All cache functions live in `includes/helpers.php`:
 
-- **Key:** `feichtmedia_imagemanager_get_metadata_cache_key()` → `feichtmedia_imagemanager_acf_meta_{md5(salt . imageId)}`. The salt is read directly via `get_option()` (internal state, not a setting). A site without a salt is flushed once before the salt is created, which removes entries stored under the old unsalted keys (`md5(imageId)`, before the salt existed).
-- **TTL:** `feichtmedia_imagemanager_get_metadata_cache_ttl()` caps the setting at `MONTH_IN_SECONDS` and maps `0` to that cap. **Never pass `0` to `set_transient()`**: WordPress autoloads transients without expiration on every request and never purges them. **Never exceed 30 days**: Memcached reads larger expirations as an (already expired) Unix timestamp. `FM_ImageManager_Settings::sanitize_ttl()` clamps saved values to `0`–`2592000`.
+- **Entry format (stale-if-error):** `['meta' => array, 'expires' => int]`. Fresh until `expires` (now + TTL); the transient itself is stored with `feichtmedia_imagemanager_get_metadata_stale_ttl()` (default and max. 30 days, filter `feichtmedia_imagemanager_acf_stale_ttl`, never below the TTL). An expired entry triggers a refresh; if the refresh fails, the old `meta` is returned and nothing is written. Without any entry the fallback is `feichtmedia_imagemanager_map_image([], …)` (URLs only, everything else `null`/`0`). Failures are never cached. Only `200` with a `data` array that contains at least one field `map_image()` reads is cached — anything else (e.g. an error object in `data`) would replace the fallback with empty values. With the cache disabled there is no fallback; a flush also removes the fallback data.
+- **Key:** `feichtmedia_imagemanager_get_metadata_cache_key()` → `feichtmedia_imagemanager_acf_meta_{md5('v2|' . salt . imageId)}`. `v2|` marks the stale-if-error format: 1.3.x returns whatever it finds under its key as the field value, so after a downgrade it would hand `['meta' => …, 'expires' => …]` to templates if both formats shared a key. Without a `v2` entry, `get_metadata()` reads the 1.3.x key (`$legacy = true`, `md5(salt . imageId)`, bare metadata array stored with the TTL as expiry) and returns that entry as fresh until it expires; it never writes the legacy key. Both share the prefix, so flush, uninstall and the salt cover both. The salt is read directly via `get_option()` (internal state, not a setting). A site without a salt is flushed once before the salt is created, which removes entries stored under the old unsalted keys (`md5(imageId)`, before the salt existed).
+- **TTL:** `feichtmedia_imagemanager_get_metadata_cache_ttl()` caps the setting at `MONTH_IN_SECONDS` and maps `0` to that cap. It sets `expires`, not the transient expiry (that is the stale TTL, same rules). **Never pass `0` to `set_transient()`**: WordPress autoloads transients without expiration on every request and never purges them. **Never exceed 30 days**: Memcached reads larger expirations as an (already expired) Unix timestamp. `FM_ImageManager_Settings::sanitize_ttl()` clamps saved values to `0`–`2592000`.
 - **Flush:** `feichtmedia_imagemanager_flush_metadata_cache()` rotates the salt first (invalidates entries in every backend, including a persistent object cache that the query cannot reach), then `feichtmedia_imagemanager_delete_metadata_transients()` deletes the rows from the options table (direct `$wpdb` query — hashed keys cannot be enumerated via the Transients API) and returns the number of deleted entries. With a persistent object cache the count is always `0`; invalidated entries expire via their TTL.
 - **Automatic invalidation:** `FM_ImageManager_Settings` flushes the current site on `add_option_` / `update_option_` / `delete_option_` of `project_id`, `domain`, `acf_cache_enabled`, and `acf_cache_ttl` (add/delete matter on multisite when a site switches between inherited and own value), and all sites on `fm_imagemanager_settings_updated`.
 - **"Clear metadata cache" button:** rendered by `render_cache_flush_field()` as the last row of the "ACF Field" section. The row sits inside the settings form and forms cannot be nested, so the button uses `form="feichtmedia-imagemanager-acf-flush-cache"` to submit a separate form that `render_cache_flush_form()` prints on `admin_footer`. Site page → `admin-post.php?action=feichtmedia_imagemanager_acf_flush_cache` (current site, `manage_options`); network page → `network/edit.php?action=feichtmedia_imagemanager_acf_flush_cache` (all sites, `manage_network_options`). Both run `handle_flush_request()` (capability + nonce `feichtmedia_imagemanager_acf_flush_nonce`), which redirects back with `fm-imagemanager-cache-cleared={count}` (a removable query arg). `render_flush_notice()` prints the success notice on `admin_notices` / `network_admin_notices` — deliberately not via `add_settings_error()`, because the site settings page prints settings errors twice (`options-head.php` and Core's `render_options_page()`). The button stays enabled while the network configuration is enforced — it changes no setting.
+
+---
+
+## API client & fail-soft
+
+**Rule: a slow or failing ImageManager API must never take a site down.** Background: on 2026-11-23 the API hung after a server update; with a 15 s timeout per image and no caching of failures, every site using the plugin blocked its PHP-FPM workers until nginx answered with 504.
+
+Every request to the API goes through `FM_ImageManager_API_Client::get( $path, $context )` (`includes/class-api-client.php`). It never throws; it returns `['status' => int, 'body' => array]` or a `WP_Error`:
+
+| Error code                         | Cause                                                         | Proxy answer |
+| ---------------------------------- | ------------------------------------------------------------- | ------------ |
+| `fm_imagemanager_unavailable`      | skipped: circuit breaker open, or per-request limit (time budget used up, earlier transport error) | 503 |
+| `fm_imagemanager_unreachable`      | transport error (`WP_Error` from `wp_remote_get()`: timeout, connection, DNS; also a non-array result from a `pre_http_request` / `http_response` filter) | 504 |
+| `fm_imagemanager_server_error`     | status 3xx, 5xx, 429 or below 200                             | 502          |
+| `fm_imagemanager_invalid_response` | 2xx whose body is not a JSON object/array                     | 502          |
+
+Statuses 2xx and 4xx (except 429) count as success for the breaker — the API answered — and are returned with their status (a 404 is the caller's business).
+
+- **Timeouts:** `get_timeouts( $context )`. `render` (format_value, GraphQL — also when called in wp-admin): 2 s connect / 3 s total. `proxy` (file browser): 3 s / 10 s. Constants (see "Constants") replace the defaults, then the filter `feichtmedia_imagemanager_acf_api_timeouts` (`array $timeouts`, `string $context`) runs; total ≥ 1 s, connect ≤ total. `WP_Http` passes only `timeout` to the Requests library (whose default `connect_timeout` is 10 s), so `remote_get()` sets `connect_timeout` via the action `requests-requests.before_request` (options by reference), registered for that one call only and matched on the `FM_IMAGEMANAGER_API_URL` prefix (Requests may normalise the URL first). Do not switch to `http_api_curl`: it misses the fsockopen transport.
+- **No redirects:** `redirection => 0`. Requests would resend the `Authorization` header to the redirect target (any host, also plain HTTP) and start a new timeout per hop. The API never redirects its JSON endpoints, so a 3xx counts as a failure.
+- **Per-request limits** (not on WP-CLI, see below), both return `fm_imagemanager_unavailable` without touching the breaker:
+  - *Time budget:* all calls of one PHP request share the context's total timeout (`self::$seconds_waited`). Each call's timeout is clamped to the remaining budget, but not below 1 s (cURL's minimum), so a page waits at most budget + 1 s (~4 s) even when the API answers slowly without failing. A healthy API (~50 ms per call) fits about 50 uncached images into the budget; the rest render with the fallback and are fetched on the next page view.
+  - *Transport skip:* after a transport error, `self::$transport_failed` skips every further call. It covers fast transport errors (connection refused, DNS) that leave the budget untouched. Fast HTTP failures (5xx) do not set it — the breaker opens within the same request after 3 of them.
+  - *WP-CLI:* both limits are off when `WP_CLI` is defined. A CLI process may render thousands of posts over hours, the limits would stop API calls for the rest of the run, and no PHP-FPM worker is blocked. Each call still has its own timeout and the breaker applies.
+- **Circuit breaker:** `FM_ImageManager_Circuit_Breaker` (`includes/class-circuit-breaker.php`), state `['failures' => int, 'open_until' => int]` in the site transient `feichtmedia_imagemanager_acf_api_breaker` — network-wide on multisite (one API, one PHP worker pool). Opens after `threshold()` consecutive failures (default 3, filter `feichtmedia_imagemanager_acf_circuit_breaker_threshold`) for `cooldown()` seconds (default 60, filter `feichtmedia_imagemanager_acf_circuit_breaker_cooldown`). Half-open: the first request after the cooldown claims the probe by moving `open_until` forward by timeout + 1 s; success deletes the state, failure re-opens it. `record_success()` writes nothing while the count is 0 (hot path). The failure count expires 10 min after the last failure / end of the cooldown. Updates are not atomic by design — a lost increment only delays opening.
+- **Logging:** `log()` writes to the PHP error log (`error_log()`, the one deliberate exception to "Code standards"), prefixed `FeichtMedia ImageManager for ACF:`, at most once per minute via the site transient `feichtmedia_imagemanager_acf_api_log_lock`. Unthrottled: the failure that opens the breaker (`failures === threshold`) and the recovery. Path without query string (search terms stay out of the log), never headers. Filter `feichtmedia_imagemanager_acf_log_api_errors` (bool) turns it off; action `feichtmedia_imagemanager_acf_api_error` (`WP_Error $error`, `string $path`, `string $context`) fires on every failure, unthrottled.
+- **Callers:** `feichtmedia_imagemanager_get_metadata()` (render context, stale-if-error — see "Metadata cache") and `FM_ImageManager_REST_Proxy::forward()` (proxy context; failures become a translated `message` via `upstream_error_response()`, which the file browser shows as is).
+
+Sequential behaviour with a hanging API (tested): requests 1–3 each take one timeout (~3 s, one API attempt each), from the 4th the breaker is open and pages render at normal speed; under concurrent load the breaker opens after the first three failed attempts. With a slow but answering API (tested with 0.8 s per call), each page view stops after ~3 s of API time; slow successes do not open the breaker.
+
+Known limits: with the fsockopen transport (no cURL extension), `timeout` applies per read, not to the whole request, and DNS lookups have no limit. The breaker is shared: proxy failures (file browser) count as well, network-wide on multisite.
 
 ---
 
@@ -272,10 +315,10 @@ Also, the `AGENTS.md` file must be reviewed and updated if necessary to reflect 
 
 - Follow [WordPress Coding Standards](https://developer.wordpress.org/coding-standards/) for PHP, JS, and CSS.
 - OOP: one class per file, single responsibility. Register all hooks inside the class's `register()` or `init()` method, not at file scope (except the activation hook in the main file).
-- No `var_dump`, `print_r`, or `error_log` left in committed code.
+- No `var_dump`, `print_r`, or `error_log` left in committed code. Single exception: the throttled production log in `FM_ImageManager_API_Client::log()` (see "API client & fail-soft").
 - Escape all output: `esc_html__()`, `esc_attr()`, `esc_url()`, `wp_kses_post()` as appropriate. Never echo unescaped user or API data.
 - Sanitise all input: `sanitize_text_field()`, `absint()`, etc.
-- Use `wp_remote_get()` (never `curl` directly). Always set a `timeout`.
+- Requests to the ImageManager API only via `FM_ImageManager_API_Client::get()` — never call `wp_remote_get()` (or `curl`) for the API directly: the client sets the timeouts, the circuit breaker and the logging. Any other HTTP request: `wp_remote_get()` with an explicit `timeout`.
 - `class_exists()` / `function_exists()` guards before any optional-dependency code.
 
 ---
@@ -289,6 +332,7 @@ Also, the `AGENTS.md` file must be reviewed and updated if necessary to reflect 
 - `.po`/`.mo` files are the single source of truth for all translations (PHP and JS alike).
 - `load_plugin_textdomain()` is called from an `add_action('init', …, 1)` closure, never directly during `plugins_loaded` — calling it earlier triggers WordPress's "translation loading triggered too early" `_doing_it_wrong()` notice. Priority 1 keeps it ahead of ACF's `init:5` field-type registration (`acf/include_field_types`) so translated field labels still resolve. The closure is registered **before** the ACF check: the Core settings pages render even when ACF is not loaded (e.g. the network admin runs the main site's active plugins, so ACF is missing there when it is only active on other sites), and the ACF-missing notice itself is translated.
 - After changing a msgid in code (including markup inside it), update the msgid **and** msgstr in every `.po` file, not only the `.pot` — a stale msgid silently falls back to English. Recompile with `npm run compile-languages`.
+- Regenerate the `.pot` with `wp i18n make-pot . languages/feichtmedia-imagemanager-acf.pot`, but edit the `.po` files by hand (new entries at the same position as in the `.pot`, without `#:` references). **Do not run `wp i18n update-po`**: it drops the header comments, reorders the header and adds source references to every entry of the hand-maintained files.
 
 Supported locales: `en_GB`, `de_DE`, `de_DE_formal`, `de_AT` (formal/Sie), `de_CH` (formal/Sie, no ß).
 Fallback for any other locale: en_US (automatic via gettext — no code needed).
@@ -319,9 +363,10 @@ Fallback for any other locale: en_US (automatic via gettext — no code needed).
 - **Permission rule:** every logged-in user who may edit content in the admin — `edit_posts`, the `edit_posts` capability of any post type with `show_ui`, or `edit_terms` / `manage_terms` of any taxonomy with `show_ui`. Modelled on `WP_REST_Block_Types_Controller::check_read_permission()`; `show_ui` instead of `show_in_rest` because ACF fields also sit on post types without REST support. Subscribers → 403, logged out → 401. Do not replace it with a check against one object (post ID): the field also sits in ACF blocks, on term, profile and options screens and in unsaved objects.
 - **Filter:** `feichtmedia_imagemanager_acf_proxy_permission` (`bool $allowed`, `WP_REST_Request $request`) changes the result in both directions. Only a boolean `true` grants access — the REST server would treat any other value except `false`, `null` and `WP_Error` as allowed.
 - **Cost of the check:** it runs on every proxy request, and each `current_user_can()` call runs the `map_meta_cap` and `user_has_cap` filters (measured 50–190 µs per call with PublishPress Capabilities + Permissions active, 2 µs without). Keep the order in `current_user_can_edit_content()`: `is_user_logged_in()` first (logged out: no call), then `edit_posts` (one call, as before), then the remaining capabilities, each listed once and those stored in `WP_User::$allcaps` first (other allowed users: two calls, independent of the number of post types). `$allcaps` only sets the order — never decide from it, because filters grant and revoke capabilities at runtime. Never cache the result across requests: a cached grant would outlive a role change.
-- Only whitelisted query params forwarded upstream (see class for the lists).
+- Only whitelisted query params forwarded upstream (see class for the lists). `limit` is clamped to 1–`MAX_LIMIT` (100; the file browser asks for 24 images / 100 categories), so no single user can keep the API busy past the timeout and open the shared breaker.
+- Route params (`imageId`, `categoryId`) are read with `get_url_params()`, never `get_param()`: `get_param()` prefers the query string, so `?imageId[]=…` (TypeError) or `?imageId=..` would bypass the route pattern. An `imageId` of dots only (`.`, `..`) answers 400 `invalid_image_id` — the pattern allows dots for file extensions.
 - API key injected server-side from `wp_options` — **never sent to the browser**.
-- Timeout: 15 s.
+- Requests go through `FM_ImageManager_API_Client` (`proxy` context: 3 s connect / 10 s total, circuit breaker; see "API client & fail-soft"). Upstream 2xx and 4xx responses (except 429) are passed through with status and body; failures answer 502/503/504 with `{error: 'upstream_error'|'upstream_unavailable', message: <translated>}`.
 
 Routes:
 
@@ -452,7 +497,7 @@ In every path `format_value()` runs exactly once — the GraphQL layer adds no e
 1. **One modal DOM node** — guarded against double-init. Never instantiated per field.
 2. **Assets enqueued once** — one script handle, one style handle. `wp_localize_script` outputs the config object once.
 3. **Zero HTTP calls on field render** — neither in the editor nor on the frontend for URL formats.
-4. **Metadata format** — always go through `feichtmedia_imagemanager_get_metadata()` which uses a Transient (key: `feichtmedia_imagemanager_acf_meta_{md5(salt . imageId)}`, TTL: `feichtmedia_imagemanager_acf_cache_ttl` option, default 3600 s, capped at 30 days; caching can be disabled via `feichtmedia_imagemanager_acf_cache_enabled`; see "Metadata cache"). Never call the API directly inside `format_value()`.
+4. **Metadata format** — always go through `feichtmedia_imagemanager_get_metadata()` which uses a Transient (key: `feichtmedia_imagemanager_acf_meta_{md5('v2|' . salt . imageId)}`, TTL: `feichtmedia_imagemanager_acf_cache_ttl` option, default 3600 s, capped at 30 days; kept as stale-if-error fallback for up to 30 days; caching can be disabled via `feichtmedia_imagemanager_acf_cache_enabled`; see "Metadata cache") and never fails (see "API client & fail-soft"). Never call the API directly inside `format_value()`.
 5. **Default return format is `relative_url`** — zero HTTP, pure string construction.
 
 ---
@@ -466,6 +511,7 @@ In every path `format_value()` runs exactly once — the GraphQL layer adds no e
   3. If other consumers remain → only update the registry, keep shared options.
   4. Always: delete plugin-specific options (`feichtmedia_imagemanager_acf_cache_enabled`, `feichtmedia_imagemanager_acf_cache_ttl`), metadata transients via `feichtmedia_imagemanager_delete_metadata_transients()` (direct `$wpdb` query matching `_transient_feichtmedia_imagemanager_acf_meta_%`), and the cache key salt (`feichtmedia_imagemanager_acf_cache_salt`).
   5. Never delete `post_meta`.
+  6. Always, once (not per site): delete the site transients `feichtmedia_imagemanager_acf_api_breaker` and `feichtmedia_imagemanager_acf_api_log_lock` (literal keys — the classes are not loaded during uninstall).
 - **Multisite:** WordPress runs `uninstall.php` once, in the current site's context. Steps 1–4 live in `fm_imagemanager_acf_uninstall_site()` and run for every site via `get_sites()` + `switch_to_blog()`. Afterwards the plugin's own network options are always deleted; the shared network options (api_key, project_id, domain, network_enforce) only if no site has a consumer left.
 - **Consumer registry on multisite:** the activation hook fires once on network activation and never for sites created later, so `fm_imagemanager_sync_consumers()` (bootstrap, `plugins_loaded:20`) registers candidates per site lazily on each request.
 

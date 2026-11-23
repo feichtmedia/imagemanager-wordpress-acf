@@ -31,6 +31,11 @@ class FM_ImageManager_REST_Proxy {
 	];
 
 	/**
+	 * Largest `limit` forwarded upstream; larger values are clamped.
+	 */
+	private const MAX_LIMIT = 100;
+
+	/**
 	 * Register REST API hooks.
 	 *
 	 * @return void
@@ -202,7 +207,21 @@ class FM_ImageManager_REST_Proxy {
 	 * @return WP_REST_Response
 	 */
 	public function proxy_single_image(WP_REST_Request $request): WP_REST_Response {
-		$image_id = $request->get_param('imageId');
+		// URL params only: get_param() prefers the query string, so ?imageId[]=… or ?imageId=..
+		// would bypass the route pattern.
+		$image_id = (string) ($request->get_url_params()['imageId'] ?? '');
+
+		// The route pattern allows dots (file extensions), but '.' or '..' would address another upstream path.
+		if ('' === trim($image_id, '.')) {
+			return new WP_REST_Response(
+				[
+					'error'   => 'invalid_image_id',
+					'message' => 'Invalid image ID.',
+				],
+				400
+			);
+		}
+
 		return $this->forward('/images/' . rawurlencode($image_id), $request, self::PARAM_WHITELIST['image']);
 	}
 
@@ -223,7 +242,8 @@ class FM_ImageManager_REST_Proxy {
 	 * @return WP_REST_Response
 	 */
 	public function proxy_single_category(WP_REST_Request $request): WP_REST_Response {
-		$category_id = $request->get_param('categoryId');
+		// URL params only (digits per the route pattern), see proxy_single_image().
+		$category_id = (string) ($request->get_url_params()['categoryId'] ?? '');
 		return $this->forward('/categories/' . rawurlencode($category_id), $request, self::PARAM_WHITELIST['category']);
 	}
 
@@ -235,8 +255,9 @@ class FM_ImageManager_REST_Proxy {
 	 * Only whitelisted query parameters are forwarded; all others are silently
 	 * dropped to prevent parameter injection.
 	 *
-	 * The User-Agent header appends the plugin identifier to the default
-	 * WordPress user agent so proxy requests are identifiable in upstream logs.
+	 * The request goes through FM_ImageManager_API_Client (proxy timeouts, circuit
+	 * breaker). Upstream 2xx and 4xx responses (except 429) are passed through with their status;
+	 * failures become a translated message the file browser shows as is.
 	 *
 	 * @param string          $path           Upstream path (e.g. '/images').
 	 * @param WP_REST_Request $request        Incoming WP REST request.
@@ -265,39 +286,54 @@ class FM_ImageManager_REST_Proxy {
 			}
 		}
 
-		$url = FM_IMAGEMANAGER_API_URL . $path;
-		if (! empty($query)) {
-			$url .= '?' . http_build_query($query);
+		// The file browser asks for 24 images or 100 categories. A larger page could keep the
+		// API busy past the timeout, and failures open the circuit breaker for every site.
+		if (isset($query['limit'])) {
+			$query['limit'] = min(self::MAX_LIMIT, max(1, absint($query['limit'])));
 		}
 
-		$base_ua    = apply_filters('http_headers_useragent', 'WordPress/' . get_bloginfo('version') . '; ' . get_bloginfo('url'), $url);
-		$user_agent = $base_ua . ' FeichtMedia-ImageManager-ACF/' . FM_IMAGEMANAGER_ACF_VERSION;
+		if (! empty($query)) {
+			$path .= '?' . http_build_query($query);
+		}
 
-		$response = wp_remote_get(
-			$url,
-			[
-				'headers'    => [
-					'Authorization' => 'Bearer ' . $api_key,
-					'Accept'        => 'application/json',
-				],
-				'user-agent' => $user_agent,
-				'timeout'    => 15,
-			]
-		);
+		$result = FM_ImageManager_API_Client::get($path, FM_ImageManager_API_Client::CONTEXT_PROXY);
 
-		if (is_wp_error($response)) {
+		if (is_wp_error($result)) {
+			return $this->upstream_error_response($result);
+		}
+
+		return new WP_REST_Response($result['body'], $result['status']);
+	}
+
+	/**
+	 * Build the response for a failed upstream request.
+	 *
+	 * The file browser shows the message as is, so it is translated and names the
+	 * next step instead of the technical cause (which goes to the error log).
+	 *
+	 * @param WP_Error $error Error from FM_ImageManager_API_Client::get().
+	 * @return WP_REST_Response 502 (error status or invalid response), 503 (calls paused) or 504 (timeout / unreachable).
+	 */
+	private function upstream_error_response(WP_Error $error): WP_REST_Response {
+		$data   = $error->get_error_data();
+		$status = is_array($data) ? (int) ($data['status'] ?? 502) : 502;
+
+		if (in_array($error->get_error_code(), ['fm_imagemanager_server_error', 'fm_imagemanager_invalid_response'], true)) {
 			return new WP_REST_Response(
 				[
 					'error'   => 'upstream_error',
-					'message' => $response->get_error_message(),
+					'message' => __('The ImageManager returned an error. Please try again in a minute.', 'feichtmedia-imagemanager-acf'),
 				],
-				502
+				$status
 			);
 		}
 
-		$status = wp_remote_retrieve_response_code($response);
-		$body   = json_decode(wp_remote_retrieve_body($response), true);
-
-		return new WP_REST_Response($body ?? [], (int) $status);
+		return new WP_REST_Response(
+			[
+				'error'   => 'upstream_unavailable',
+				'message' => __('The ImageManager is not responding. Please try again in a minute.', 'feichtmedia-imagemanager-acf'),
+			],
+			$status
+		);
 	}
 }

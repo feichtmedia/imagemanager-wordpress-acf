@@ -262,8 +262,9 @@ class FM_ImageManager_ACF_Field_Image extends acf_field {
 				return feichtmedia_imagemanager_build_url($group_id, $image_id, $domain);
 
 			case 'metadata':
-				// Server-side API call with Transient cache (TTL 1 h). Never calls
-				// the API directly — always goes through the caching helper.
+				// Server-side API call with Transient cache and stale-if-error. Never
+				// calls the API directly — always goes through the caching helper,
+				// which never fails (short timeouts, circuit breaker, fallback data).
 				return feichtmedia_imagemanager_get_metadata($group_id, $image_id, $domain);
 
 			case 'relative_url':
