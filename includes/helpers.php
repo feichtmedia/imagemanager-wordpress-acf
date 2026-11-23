@@ -104,13 +104,20 @@ function feichtmedia_imagemanager_map_image(array $data, string $group_id, strin
 }
 
 /**
- * Fetch image metadata from the ImageManager API, with Transient caching.
+ * Fetch image metadata from the ImageManager API, with Transient caching and stale-if-error.
  *
- * Cache key: see feichtmedia_imagemanager_get_metadata_cache_key(), TTL: see
- * feichtmedia_imagemanager_get_metadata_cache_ttl(). Caching can be disabled
- * entirely via feichtmedia_imagemanager_acf_cache_enabled.
- * On API error, returns minimal data built from locally known values so that
- * format_value() can still return a usable (if incomplete) result.
+ * Cache entries are stored as `['meta' => array, 'expires' => int]`: they are fresh
+ * until `expires` (the TTL setting, see feichtmedia_imagemanager_get_metadata_cache_ttl())
+ * and stay in the cache until feichtmedia_imagemanager_get_metadata_stale_ttl() as
+ * the fallback for a failed refresh. Caching (and with it the fallback) can be
+ * disabled via feichtmedia_imagemanager_acf_cache_enabled. Key: see
+ * feichtmedia_imagemanager_get_metadata_cache_key(); without an entry under it, an
+ * entry written by 1.3.x (legacy key) is returned until it expires.
+ *
+ * Never fails: when the API cannot deliver (timeout, error status, invalid response,
+ * circuit breaker open — see FM_ImageManager_API_Client), the last known metadata is
+ * returned, or without one an array built from locally known values only (URLs; title,
+ * alt, copyright etc. null), so format_value() can still return a usable result.
  *
  * @param string $group_id Usergroup / project ID.
  * @param string $image_id Image filename (newFilename).
@@ -120,50 +127,50 @@ function feichtmedia_imagemanager_map_image(array $data, string $group_id, strin
 function feichtmedia_imagemanager_get_metadata(string $group_id, string $image_id, string $domain): array {
 	$cache_enabled = (bool) FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_acf_cache_enabled', 1);
 	$cache_key     = $cache_enabled ? feichtmedia_imagemanager_get_metadata_cache_key($image_id) : '';
+	$stale         = null;
 
 	if ($cache_enabled) {
 		$cached = get_transient($cache_key);
-		if ($cached !== false) {
-			return (array) $cached;
+
+		if (is_array($cached) && isset($cached['meta'], $cached['expires']) && is_array($cached['meta'])) {
+			if ((int) $cached['expires'] > time()) {
+				return $cached['meta'];
+			}
+			// Expired: refresh below, but keep it as the fallback in case the API fails.
+			$stale = $cached['meta'];
+		} else {
+			// Entry written by 1.3.x (bare metadata array under the unversioned key, stored with
+			// the TTL as transient expiry): fresh until the transient itself expires.
+			$legacy = get_transient(feichtmedia_imagemanager_get_metadata_cache_key($image_id, true));
+			if (is_array($legacy) && [] !== $legacy) {
+				return $legacy;
+			}
 		}
 	}
 
-	$api_key  = FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_api_key', '');
-	$response = wp_remote_get(
-		FM_IMAGEMANAGER_API_URL . '/images/' . rawurlencode($image_id),
-		[
-			'headers' => [
-				'Authorization' => 'Bearer ' . $api_key,
-				'Accept'        => 'application/json',
-				'User-Agent'    => apply_filters('http_headers_useragent', 'WordPress/' . get_bloginfo('version') . '; ' . get_bloginfo('url'), FM_IMAGEMANAGER_API_URL . '/images/' . $image_id) . ' FeichtMedia-ImageManager-ACF/' . FM_IMAGEMANAGER_ACF_VERSION,
-			],
-			'timeout' => 15,
-		]
-	);
+	$response = FM_ImageManager_API_Client::get('/images/' . rawurlencode($image_id));
+	$data     = (! is_wp_error($response) && 200 === $response['status']) ? ($response['body']['data'] ?? null) : null;
 
-	// On any error, return minimal data from locally known values.
-	if (is_wp_error($response) || (int) wp_remote_retrieve_response_code($response) !== 200) {
-		return [
-			'org_filename' => null,
-			'image_id'     => $image_id,
-			'relative_url' => '/' . $group_id . '/' . $image_id,
-			'absolute_url' => feichtmedia_imagemanager_build_url($group_id, $image_id, $domain),
-			'title'        => null,
-			'alt'          => null,
-			'copyright'    => null,
-			'width'        => 0,
-			'height'       => 0,
-			'filetype'     => null,
-			'filesize'     => 0,
-		];
+	// Metadata only if `data` has a field the mapping reads: anything else (e.g. an error object
+	// after an API change) would replace the fallback with empty values for the whole TTL.
+	$known_fields = ['orgFilename', 'customTitle', 'altText', 'copyrightInfos', 'width', 'height', 'filetype', 'filesize'];
+
+	if (! is_array($data) || [] === array_intersect_key($data, array_flip($known_fields))) {
+		// Never cached: the next request after the outage fetches again.
+		return $stale ?? feichtmedia_imagemanager_map_image([], $group_id, $image_id, $domain);
 	}
 
-	$body = json_decode(wp_remote_retrieve_body($response), true) ?? [];
-	$data = $body['data'] ?? [];
 	$meta = feichtmedia_imagemanager_map_image($data, $group_id, $image_id, $domain);
 
 	if ($cache_enabled) {
-		set_transient($cache_key, $meta, feichtmedia_imagemanager_get_metadata_cache_ttl());
+		set_transient(
+			$cache_key,
+			[
+				'meta'    => $meta,
+				'expires' => time() + feichtmedia_imagemanager_get_metadata_cache_ttl(),
+			],
+			feichtmedia_imagemanager_get_metadata_stale_ttl()
+		);
 	}
 
 	return $meta;
@@ -172,17 +179,23 @@ function feichtmedia_imagemanager_get_metadata(string $group_id, string $image_i
 /**
  * Build the transient name for an image's cached metadata.
  *
- * Format: feichtmedia_imagemanager_acf_meta_{md5(salt . imageId)}. The per-site salt
- * (option feichtmedia_imagemanager_acf_cache_salt) is rotated on every flush, which
+ * Format: feichtmedia_imagemanager_acf_meta_{md5('v2|' . salt . imageId)}. The per-site
+ * salt (option feichtmedia_imagemanager_acf_cache_salt) is rotated on every flush, which
  * invalidates all entries at once — including those in a persistent object cache,
  * where the query in feichtmedia_imagemanager_delete_metadata_transients() cannot
  * reach them. A site without a salt is flushed first, so entries written before the
  * salt existed (keyed by image ID only) do not linger in the options table.
  *
+ * 'v2|' marks the stale-if-error entry format (1.4.0). 1.3.x stored bare metadata arrays
+ * under md5(salt . imageId) and returns whatever it finds there as the field value, so
+ * after a downgrade it would hand ['meta' => …, 'expires' => …] to templates if both
+ * formats shared a key.
+ *
  * @param string $image_id Image filename (newFilename).
+ * @param bool   $legacy   Return the key of the 1.3.x format (read only, during the transition).
  * @return string Transient name.
  */
-function feichtmedia_imagemanager_get_metadata_cache_key(string $image_id): string {
+function feichtmedia_imagemanager_get_metadata_cache_key(string $image_id, bool $legacy = false): string {
 	// Internal per-site state, not a setting — read directly, never via get_setting().
 	$salt = (string) get_option('feichtmedia_imagemanager_acf_cache_salt', '');
 
@@ -191,7 +204,7 @@ function feichtmedia_imagemanager_get_metadata_cache_key(string $image_id): stri
 		$salt = (string) get_option('feichtmedia_imagemanager_acf_cache_salt', '');
 	}
 
-	return 'feichtmedia_imagemanager_acf_meta_' . md5($salt . $image_id);
+	return 'feichtmedia_imagemanager_acf_meta_' . md5(($legacy ? '' : 'v2|') . $salt . $image_id);
 }
 
 /**
@@ -209,6 +222,28 @@ function feichtmedia_imagemanager_get_metadata_cache_ttl(): int {
 	$ttl = (int) FM_ImageManager_Core::get_setting('feichtmedia_imagemanager_acf_cache_ttl', 3600);
 
 	return ($ttl <= 0 || $ttl > MONTH_IN_SECONDS) ? MONTH_IN_SECONDS : $ttl;
+}
+
+/**
+ * Resolve how long cached metadata stays available as a fallback (stale-if-error).
+ *
+ * This is the transient expiry of a metadata entry, counted from its last successful
+ * fetch; the entry is fresh only for feichtmedia_imagemanager_get_metadata_cache_ttl().
+ * Default and maximum: 30 days (Memcached limit, see the TTL function). It is never
+ * shorter than the TTL, so a TTL of 30 days leaves no fallback window.
+ *
+ * @return int Lifetime in seconds, between the cache TTL and MONTH_IN_SECONDS.
+ */
+function feichtmedia_imagemanager_get_metadata_stale_ttl(): int {
+	/**
+	 * Filters how long cached image metadata stays available as a fallback when the
+	 * ImageManager API fails. Return 0 to keep entries only for the cache TTL.
+	 *
+	 * @param int $lifetime Seconds after the last successful fetch, default MONTH_IN_SECONDS.
+	 */
+	$lifetime = (int) apply_filters('feichtmedia_imagemanager_acf_stale_ttl', MONTH_IN_SECONDS);
+
+	return min(MONTH_IN_SECONDS, max(feichtmedia_imagemanager_get_metadata_cache_ttl(), $lifetime));
 }
 
 /**
