@@ -4,7 +4,7 @@ Tags: acf, advanced custom fields, imagemanager, dam, digital asset management
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.3.2
+Stable tag: 1.4.0
 License: GPL-2.0-or-later
 
 Integrates the FeichtMedia ImageManager DAM into Advanced Custom Fields (ACF) as a native field type.
@@ -158,8 +158,32 @@ The **Relative URL** and **Absolute URL** formats are never cached – they are 
 Yes. Under **Settings → FeichtMedia ImageManager** in the **ACF Field** section you can:
 
 * Set the **cache TTL** in seconds (default: 3,600; maximum: 2,592,000 = 30 days). A value of `0` also uses the maximum of 30 days.
-* **Fully disable the cache** by unchecking the corresponding option. In this case, one API request is made per image per page load.
+* **Fully disable the cache** by unchecking the corresponding option. In this case, one API request is made per image per page load, and there is no fallback when the ImageManager is unreachable (see "What happens when the ImageManager is unreachable?").
 * **Clear the cache** with the **Clear metadata cache** button.
+
+= What happens when the ImageManager is unreachable? =
+
+Your site keeps working. While a page is being rendered, the plugin waits for the ImageManager for about 3 seconds in total (2 seconds to connect), even if the page contains many images or the ImageManager answers slowly. In the file browser, it waits at most 10 seconds.
+
+* **Relative URL** and **Absolute URL** fields never contact the ImageManager and are not affected.
+* **Metadata** fields show the last known metadata (title, alt text, copyright, dimensions), even if the cache TTL has expired. For this purpose, metadata is kept for up to 30 days after it was last fetched. Images without cached metadata are output with their URLs only; title, alt text and copyright are empty.
+* After the first timeout, or once the page has waited about 3 seconds in total, no further requests to the ImageManager are made while the same page is rendered. The remaining images use the last known metadata or their URLs.
+* After 3 failed requests in a row, the plugin stops contacting the ImageManager for 60 seconds, so visitors do not wait for a timeout on every page view. Afterwards it tries again and resumes automatically as soon as the ImageManager answers.
+* The file browser shows "The ImageManager is not responding. Please try again in a minute."
+* Failures are written to the PHP error log, at most once per minute, starting with `FeichtMedia ImageManager for ACF:`.
+
+Clearing the metadata cache during an outage also removes the last known metadata. With the cache disabled, there is no fallback.
+
+= Can I change the timeouts? =
+
+Yes, with constants in your `wp-config.php` (values in seconds, defaults shown):
+
+`define( 'FM_IMAGEMANAGER_ACF_API_CONNECT_TIMEOUT', 2 );` – connecting, while a page is rendered
+`define( 'FM_IMAGEMANAGER_ACF_API_TIMEOUT', 3 );` – total, while a page is rendered
+`define( 'FM_IMAGEMANAGER_ACF_PROXY_CONNECT_TIMEOUT', 3 );` – connecting, file browser
+`define( 'FM_IMAGEMANAGER_ACF_PROXY_TIMEOUT', 10 );` – total, file browser
+
+Developers can also use these filters: `feichtmedia_imagemanager_acf_api_timeouts` (timeouts per context `render` or `proxy`), `feichtmedia_imagemanager_acf_circuit_breaker_threshold` (failures before API calls are paused, default 3), `feichtmedia_imagemanager_acf_circuit_breaker_cooldown` (pause in seconds, default 60), `feichtmedia_imagemanager_acf_stale_ttl` (how long metadata stays available as fallback, default 30 days) and `feichtmedia_imagemanager_acf_log_api_errors` (return `false` to turn off logging). The action `feichtmedia_imagemanager_acf_api_error` fires on every failed request, for example to connect your monitoring.
 
 = What happens when multiple editors work simultaneously? =
 
@@ -225,6 +249,15 @@ No visitor IP addresses, post content, or other personally identifiable informat
 
 Only plugin-level changes are listed here. Changes to the internal Shared Core Component (`includes/shared/imagemanager-core/`) are documented in `CHANGELOG.md` under a separate `Core` sub-section of the relevant version entry.
 
+= 1.4.0 – 2026-11-23 =
+* Added: A slow or unreachable ImageManager no longer slows down or takes down your site. While a page is rendered, the plugin waits for the ImageManager for about 3 seconds in total. After 3 failed requests in a row, it pauses requests for 60 seconds and then resumes automatically. Images with the Metadata format keep their last known title, alt text and copyright for up to 30 days, otherwise they are output with their URLs only. See "What happens when the ImageManager is unreachable?" in the FAQ.
+* Added: Constants and filters to change the timeouts, the pause and the logging (see "Can I change the timeouts?" in the FAQ).
+* Updated: The file browser shows "The ImageManager is not responding. Please try again in a minute." instead of a technical error when the ImageManager is unreachable.
+* Fixed: A hanging ImageManager made every page with a Metadata image field wait up to 15 seconds per image, which could make the whole site unreachable.
+* Fixed: A maintenance page of the ImageManager was cached as empty image metadata, so title, alt text and copyright were missing until the cache expired.
+* Fixed: Requests to the ImageManager followed redirects and sent the API key to the redirect target. Redirects are no longer followed.
+* Fixed: Malformed requests to the file browser's REST routes could cause a PHP fatal error.
+
 = 1.3.2 – 2026-10-06 =
 * Added: Filter `feichtmedia_imagemanager_acf_proxy_permission` to change who can use the file browser, for example for fields on options pages or user profiles that require other capabilities.
 * Fixed: Users whose role does not include the `edit_posts` capability could not use the file browser and saw "Sorry, you are not allowed to do that." instead of their images. This affected roles that can only edit pages or custom post types, for example roles created with PublishPress Capabilities or Members. The file browser is now available to every user who can edit content of any post type or taxonomy in the WordPress admin.
@@ -287,6 +320,9 @@ Only plugin-level changes are listed here. Changes to the internal Shared Core C
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.4.0 =
+Recommended update: a slow or unreachable ImageManager no longer blocks your pages. Pages show the last known image metadata or the image URLs instead, and the file browser shows a clear message. No database changes. Safe to update.
 
 = 1.3.2 =
 Fixes the file browser being blocked for roles without the `edit_posts` capability, e.g. roles that can only edit pages or custom post types. Every user who can edit content in the admin can now browse the image library. No database changes. Safe to update.

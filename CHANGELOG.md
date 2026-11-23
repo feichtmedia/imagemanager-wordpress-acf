@@ -1,6 +1,6 @@
 # Changelog – FeichtMedia ImageManager for Advanced Custom Fields
 
-## [Unreleased]
+## [1.4.0] – 2026-11-23
 
 - Added: `FM_ImageManager_API_Client` (`includes/class-api-client.php`) as the single entry point for all ImageManager API requests (metadata fetch and REST proxy), which never throws and returns every failure as a `WP_Error`:
   - Hard timeouts per context: `render` (field values on page views) 2 s connect / 3 s total, `proxy` (file browser) 3 s / 10 s. Overridable via the constants `FM_IMAGEMANAGER_ACF_API_CONNECT_TIMEOUT`, `FM_IMAGEMANAGER_ACF_API_TIMEOUT`, `FM_IMAGEMANAGER_ACF_PROXY_CONNECT_TIMEOUT` and `FM_IMAGEMANAGER_ACF_PROXY_TIMEOUT` in `wp-config.php` and the filter `feichtmedia_imagemanager_acf_api_timeouts`. The connect timeout is set through the WordPress action `requests-requests.before_request`, because `WP_Http` only passes the total timeout on.
