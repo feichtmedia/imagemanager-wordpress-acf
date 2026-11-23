@@ -61,8 +61,10 @@ add_action('plugins_loaded', function () {
         return;
     }
 
-    // 3c) Helpers + ACF field type.
+    // 3c) Helpers, API client (timeouts, circuit breaker, logging) + ACF field type.
     require_once FM_IMAGEMANAGER_ACF_PATH . 'includes/helpers.php';
+    require_once FM_IMAGEMANAGER_ACF_PATH . 'includes/class-circuit-breaker.php';
+    require_once FM_IMAGEMANAGER_ACF_PATH . 'includes/class-api-client.php';
     require_once FM_IMAGEMANAGER_ACF_PATH . 'includes/class-acf-field-image.php';
     add_action('acf/include_field_types', function () {
         acf_register_field_type('FM_ImageManager_ACF_Field_Image');

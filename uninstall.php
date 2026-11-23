@@ -80,3 +80,8 @@ if ( is_multisite() ) {
 } else {
 	fm_imagemanager_acf_uninstall_site();
 }
+
+// Regenerable API state (circuit breaker, log throttle) — site transients, i.e. network-wide on multisite.
+// Literal keys: the classes defining them as constants are not loaded during uninstall.
+delete_site_transient( 'feichtmedia_imagemanager_acf_api_breaker' );
+delete_site_transient( 'feichtmedia_imagemanager_acf_api_log_lock' );
