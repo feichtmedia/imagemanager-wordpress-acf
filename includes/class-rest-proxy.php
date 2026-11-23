@@ -207,7 +207,21 @@ class FM_ImageManager_REST_Proxy {
 	 * @return WP_REST_Response
 	 */
 	public function proxy_single_image(WP_REST_Request $request): WP_REST_Response {
-		$image_id = $request->get_param('imageId');
+		// URL params only: get_param() prefers the query string, so ?imageId[]=… or ?imageId=..
+		// would bypass the route pattern.
+		$image_id = (string) ($request->get_url_params()['imageId'] ?? '');
+
+		// The route pattern allows dots (file extensions), but '.' or '..' would address another upstream path.
+		if ('' === trim($image_id, '.')) {
+			return new WP_REST_Response(
+				[
+					'error'   => 'invalid_image_id',
+					'message' => 'Invalid image ID.',
+				],
+				400
+			);
+		}
+
 		return $this->forward('/images/' . rawurlencode($image_id), $request, self::PARAM_WHITELIST['image']);
 	}
 
@@ -228,7 +242,8 @@ class FM_ImageManager_REST_Proxy {
 	 * @return WP_REST_Response
 	 */
 	public function proxy_single_category(WP_REST_Request $request): WP_REST_Response {
-		$category_id = $request->get_param('categoryId');
+		// URL params only (digits per the route pattern), see proxy_single_image().
+		$category_id = (string) ($request->get_url_params()['categoryId'] ?? '');
 		return $this->forward('/categories/' . rawurlencode($category_id), $request, self::PARAM_WHITELIST['category']);
 	}
 
