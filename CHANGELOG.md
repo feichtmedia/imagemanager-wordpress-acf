@@ -1,5 +1,11 @@
 # Changelog – FeichtMedia ImageManager for Advanced Custom Fields
 
+## [1.4.1] – 2026-11-26
+
+- Verified: Compatibility with WordPress 7.2 (tested with 7.2-RC3 and ACF PRO 6.8.10): field rendering in all return formats, file browser in the block editor, REST proxy including CORS headers and error responses, settings page with the new SVG admin menu, and no jQuery Migrate 3.6.0 warnings from the plugin's script. Plugin Check 2.2.0 reports no errors. No code changes needed.
+- Fixed: The `readme.txt` FAQ ("Which return formats are available …", "How do I use the field …") documented the `metadata` return format as an object with camelCase keys (`imageId`, `absoluteUrl`, …), so templates written from it read undefined array keys. `format_value()` has returned the array from `feichtmedia_imagemanager_map_image()` with snake_case keys (`image_id`, `absolute_url`, …) since 1.0.0; only the GraphQL type `ImageManagerImage` uses camelCase. Corrected the FAQ and documented the PHP keys in `README.md` and `AGENTS.md`.
+- Fixed: The 1.2.0 upgrade notice in `readme.txt` exceeded the WordPress.org limit of 300 characters (Plugin Check warning `upgrade_notice_limit`); shortened it.
+
 ## [1.4.0] – 2026-11-23
 
 - Added: `FM_ImageManager_API_Client` (`includes/class-api-client.php`) as the single entry point for all ImageManager API requests (metadata fetch and REST proxy), which never throws and returns every failure as a `WP_Error`:
