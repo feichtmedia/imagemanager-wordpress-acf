@@ -46,7 +46,7 @@ Optional integrations activate automatically when present:
 
 | Constant                        | Value                                           |
 | ------------------------------- | ----------------------------------------------- |
-| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.4.0'` (bump on every release)               |
+| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.4.1'` (bump on every release)               |
 | `FM_IMAGEMANAGER_ACF_PATH`      | `plugin_dir_path(__FILE__)`                     |
 | `FM_IMAGEMANAGER_ACF_URL`       | `plugin_dir_url(__FILE__)`                      |
 | `FM_IMAGEMANAGER_API_URL`       | `'https://imagemanager.feicht-media.de/api/v2'` |
@@ -108,6 +108,7 @@ Only whitelisted query params are forwarded upstream (see `FM_ImageManager_REST_
 - **Class:** `FM_ImageManager_ACF_Field_Image` (`includes/class-acf-field-image.php`)
 - **Field settings:** `return_format` (`relative_url` | `absolute_url` | `metadata`), `required` (built-in), `allow_null` (rendered on the **Validation** tab via `render_field_validation_settings()`)
 - **Stored value:** image ID (`newFilename`) only — never a full URL
+- **`metadata` format in PHP:** array from `feichtmedia_imagemanager_map_image()` with snake_case keys — `image_id`, `relative_url`, `absolute_url`, `org_filename`, `title`, `alt`, `copyright`, `width`, `height`, `filetype`, `filesize` (empty text values `null`, missing numbers `0`). GraphQL exposes the same fields in camelCase (see [WPGraphQL integration](#wpgraphql-integration)).
 - **Backward compat:** values containing `/` are legacy relative URLs; the regex extracts the last two path segments as `groupId`/`imageId`, handling filter-prefix variants and values without a leading slash (`wordpress/image.jpg`) too
 
 ### Why keep `allow_null` next to `required`?

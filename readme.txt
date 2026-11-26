@@ -2,9 +2,9 @@
 Contributors: feichtmedia
 Tags: acf, advanced custom fields, imagemanager, dam, digital asset management
 Requires at least: 7.0
-Tested up to: 7.1
+Tested up to: 7.2
 Requires PHP: 8.2
-Stable tag: 1.4.0
+Stable tag: 1.4.1
 License: GPL-2.0-or-later
 
 Integrates the FeichtMedia ImageManager DAM into Advanced Custom Fields (ACF) as a native field type.
@@ -120,7 +120,7 @@ The return format is set per ACF field in the field settings:
 
 * **Relative URL** (default) – Returns a path, e.g. `/wordpress/20260612-085316-my-photo.jpg`. No API call, fastest option. Suitable when your theme assembles the full URL itself or passes the path to a CDN helper.
 * **Absolute URL** – Returns the full CDN URL, e.g. `https://cdn.example.com/wordpress/…`. Also no API call. Suitable when you need a ready-to-use URL in templates.
-* **Metadata** – Returns an object with `imageId`, `relativeUrl`, `absoluteUrl`, `orgFilename`, `title`, `alt`, `copyright`, `width`, `height`, `filetype`, and `filesize`. Requires one API call per image per cache interval (default: 1 hour, configurable). Suitable when your template needs alt text, copyright information, or image dimensions.
+* **Metadata** – Returns an array with the keys `image_id`, `relative_url`, `absolute_url`, `org_filename`, `title`, `alt`, `copyright`, `width`, `height`, `filetype`, and `filesize`. In GraphQL, the same fields use camelCase (see "Is WPGraphQL supported?"). Requires one API call per image per cache interval (default: 1 hour, configurable). Suitable when your template needs alt text, copyright information, or image dimensions.
 
 = What is the project ID? =
 
@@ -218,7 +218,7 @@ Retrieve the ACF field as usual with `get_field()` or `the_field()`. The returne
 
 **Metadata:**
 `$image = get_field('my_imagemanager_field');`
-`// $image['alt'], $image['title'], $image['absoluteUrl'], $image['width'], …`
+`// $image['alt'], $image['title'], $image['absolute_url'], $image['width'], …`
 
 = Are images uploaded to or stored in WordPress? =
 
@@ -248,6 +248,10 @@ No visitor IP addresses, post content, or other personally identifiable informat
 == Changelog ==
 
 Only plugin-level changes are listed here. Changes to the internal Shared Core Component (`includes/shared/imagemanager-core/`) are documented in `CHANGELOG.md` under a separate `Core` sub-section of the relevant version entry.
+
+= 1.4.1 – 2026-11-26 =
+* Verified compatibility with WordPress 7.2.
+* Fixed: The FAQ listed the keys of the Metadata return format in camelCase (e.g. `absoluteUrl`). `get_field()` returns them in snake_case (e.g. `absolute_url`), as it always has; only GraphQL uses camelCase. The plugin itself is unchanged.
 
 = 1.4.0 – 2026-11-23 =
 * Added: A slow or unreachable ImageManager no longer slows down or takes down your site. While a page is rendered, the plugin waits for the ImageManager for about 3 seconds in total. After 3 failed requests in a row, it pauses requests for 60 seconds and then resumes automatically. Images with the Metadata format keep their last known title, alt text and copyright for up to 30 days, otherwise they are output with their URLs only. See "What happens when the ImageManager is unreachable?" in the FAQ.
@@ -321,6 +325,9 @@ Only plugin-level changes are listed here. Changes to the internal Shared Core C
 
 == Upgrade Notice ==
 
+= 1.4.1 =
+Confirms compatibility with WordPress 7.2 and corrects the metadata keys documented in the FAQ. No code changes. Safe to update.
+
 = 1.4.0 =
 Recommended update: a slow or unreachable ImageManager no longer blocks your pages. Pages show the last known image metadata or the image URLs instead, and the file browser shows a clear message. No database changes. Safe to update.
 
@@ -343,8 +350,7 @@ Fixes GraphQL returning the wrong image for same-named image fields in different
 Fixes GraphQL compatibility: image fields nested inside an ACF Group or inside ACF Blocks returned null. Also fixes the file browser losing the active-image highlight while browsing folders. No database changes. Safe to update.
 
 = 1.2.0 =
-* Fixes ACF Repeater compatibility: selecting images in the editor always updated the first row; GraphQL returned null for all Repeater sub-field values. Also fixes the file browser button in ACF blocks edited via the Expanded Editor (WordPress 7 / ACF 6.8+). No database changes. Safe to update.
-* The 'Allow null' setting has been moved from the 'General' to the 'Validation' tab in the ACF field admin settings.
+Fixes image selection and GraphQL values in ACF Repeaters, and the file browser button in ACF blocks edited in the Expanded Editor (WordPress 7 / ACF 6.8+). The 'Allow null' setting moved to the 'Validation' tab. No database changes. Safe to update.
 
 = 1.1.0 =
 Plugin display name changed (slug unchanged). No database changes. Safe to update.

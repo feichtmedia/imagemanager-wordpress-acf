@@ -84,7 +84,7 @@ plugins_loaded priority 20 → Core: write lock on all managed options (the mana
 
 | Constant                        | Value                                           | Configurable?   |
 | ------------------------------- | ----------------------------------------------- | --------------- |
-| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.4.0'`                                       | bump on release |
+| `FM_IMAGEMANAGER_ACF_VERSION`   | `'1.4.1'`                                       | bump on release |
 | `FM_IMAGEMANAGER_ACF_PATH`      | `plugin_dir_path(__FILE__)`                     | no              |
 | `FM_IMAGEMANAGER_ACF_URL`       | `plugin_dir_url(__FILE__)`                      | no              |
 | `FM_IMAGEMANAGER_API_URL`       | `'https://imagemanager.feicht-media.de/api/v2'` | no              |
@@ -345,6 +345,7 @@ Fallback for any other locale: en_US (automatic via gettext — no code needed).
 - Extends `acf_field`. Registered via `acf_register_field_type()` on the `acf/include_field_types` action.
 - Field settings: `return_format` (relative_url | absolute_url | metadata), `allow_null`.
 - `format_value()` handles all three return formats and backward-compat parsing.
+- `metadata` returns the array from `feichtmedia_imagemanager_map_image()` with **snake_case** keys: `image_id`, `relative_url`, `absolute_url`, `org_filename`, `title`, `alt`, `copyright`, `width`, `height`, `filetype`, `filesize` (empty text values `null`, missing numbers `0`). Only the GraphQL type `ImageManagerImage` uses camelCase (see "GraphQL"). Never rename the PHP keys — themes read them — and keep the two naming schemes apart in user docs (`readme.txt` FAQ).
 - `update_value()` strips any path prefix before saving — only the bare image ID is ever written to `post_meta`.
 - ACF Conditional Logic: registers `imagemanagerHasValue` (`!=empty`) and `imagemanagerHasNoValue` (`==empty`) condition types in JS. Only "has a value / has no value" operators are supported (the stored value is an opaque image ID, not a user-comparable string).
 - Assets enqueued only on ACF admin screens via `input_admin_enqueue_scripts()`. UI strings are translated in PHP and passed once via `wp_localize_script` as `window.fmImageManager.strings`.
